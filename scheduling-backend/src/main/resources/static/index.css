@@ -1,0 +1,301 @@
+/* style.css */
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(to right, #4facfe, #00f2fe);
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+header {
+  background: #222;
+  color: #fff;
+  padding: 15px;
+  text-align: center;
+}
+
+nav button {
+  margin: 5px;
+  padding: 10px 20px;
+  background: #4facfe;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+nav button:hover {
+  background: #00c6ff;
+}
+
+.module {
+  display: none;
+  padding: 20px;
+  margin: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.module h2 {
+  color: #4facfe;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+ul li {
+  background: #f0f0f0;
+  margin: 8px 0;
+  padding: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+ul li:hover {
+  background: #d6f5ff;
+}
+
+.submenu {
+  display: none;
+  margin-top: 15px;
+  padding: 15px;
+  background: #fafafa;
+  border-left: 4px solid #4facfe;
+  border-radius: 5px;
+}
+/* Registration Form Styling */
+.form-container {
+  display: none;
+  margin-top: 20px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.form-container h3 {
+  color: #4facfe;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+input, textarea {
+  padding: 8px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button[type="submit"] {
+  margin-top: 15px;
+  padding: 10px;
+  background: #4facfe;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background: #00c6ff;
+}
+
+/* ── Action Cards (inside submenus) ─────────────────────── */
+.action-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.action-card h4 {
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Tables ─────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 6px;
+}
+th {
+  background: #4facfe;
+  color: white;
+  padding: 8px 10px;
+  text-align: left;
+}
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+tr:hover td { background: #f5fbff; }
+td button {
+  padding: 4px 10px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+td button:hover { background: #c0392b; }
+
+/* ── Status Badges ──────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: bold;
+}
+.badge-available  { background: #d4edda; color: #155724; }
+.badge-booked     { background: #fff3cd; color: #856404; }
+.badge-cancelled  { background: #f8d7da; color: #721c24; }
+.badge-confirmed  { background: #d4edda; color: #155724; }
+.badge-waitlisted { background: #cce5ff; color: #004085; }
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn-refresh {
+  padding: 3px 8px;
+  background: #e8f4ff;
+  color: #0088cc;
+  border: 1px solid #4facfe;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.btn-refresh:hover { background: #d0e8ff; }
+
+.btn-danger {
+  margin-top: 10px;
+  padding: 8px 14px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.btn-danger:hover { background: #c0392b; }
+
+.btn-export {
+  margin: 4px 6px 4px 0;
+  padding: 8px 14px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.btn-export:hover { background: #219150; }
+
+/* ── Toast Notification ─────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 9999;
+  max-width: 340px;
+}
+.toast.show { opacity: 1; }
+.toast.success { background: #27ae60; }
+.toast.error   { background: #e74c3c; }
+
+/* ── Message boxes ──────────────────────────────────────── */
+.msg-success {
+  background: #d4edda;
+  color: #155724;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+.msg-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+.empty-msg {
+  color: #999;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+select {
+  padding: 8px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* ── Error Texts ────────────────────────────────────────── */
+.error-text {
+  color: #e74c3c;
+  font-size: 12px;
+  margin-top: 3px;
+  min-height: 14px;
+}
+input.input-error, select.input-error {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+}
+
+/* ── Loading Overlay ────────────────────────────────────── */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border-left-color: #fff;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+button:disabled, select:disabled, input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

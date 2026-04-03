@@ -1,0 +1,170 @@
+package com.scheduling.controller;
+
+import com.scheduling.dto.BookingDTO;
+import com.scheduling.dto.SlotDTO;
+import com.scheduling.entity.Booking;
+import com.scheduling.entity.Booking.BookingStatus;
+import com.scheduling.entity.Slot;
+import com.scheduling.entity.Slot.SlotStatus;
+import com.scheduling.entity.Team;
+import com.scheduling.repository.BookingRepository;
+import com.scheduling.repository.SlotRepository;
+import com.scheduling.repository.TeamRepository;
+import com.scheduling.service.AdminService;
+import com.scheduling.service.ScheduleService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/bookings")
+@RequiredArgsConstructor
+public class BookingController {
+
+    private final BookingRepository bookingRepository;
+    private final SlotRepository slotRepository;
+    private final TeamRepository teamRepository;
+    private final AdminService adminService;
+    private final ScheduleService scheduleService;
+
+    @GetMapping("/available")
+    public ResponseEntity<List<SlotDTO>> getAvailableSlots() {
+        return ResponseEntity.ok(scheduleService.getAvailableSlots());
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<SlotDTO>> getAllSlots() {
+        return ResponseEntity.ok(scheduleService.getAllSlots());
+    }
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity<BookingDTO> bookSlot(@Valid @RequestBody BookingDTO dto) {
+        Team team = teamRepository.findById(dto.getTeamId())
+                .orElseThrow(() -> new IllegalArgumentException("Team not found: " + dto.getTeamId()));
+        Slot slot = slotRepository.findById(dto.getSlotId())
+                .orElseThrow(() -> new IllegalArgumentException("Slot not found: " + dto.getSlotId()));
+
+        // Prevent double-confirmed booking for same team across ANY slots
+        boolean alreadyConfirmed = bookingRepository.findByTeam_Id(team.getId()).stream()
+                .anyMatch(b -> b.getStatus() == BookingStatus.CONFIRMED);
+        if (alreadyConfirmed) {
+            throw new IllegalArgumentException("Team already has a confirmed booking. Cancel or reschedule first.");
+        }
+
+        // Prevent double-booking (or double-waitlisting) the exact same slot
+        if (bookingRepository.existsByTeam_IdAndSlot_IdAndStatusNot(team.getId(), slot.getId(), BookingStatus.CANCELLED)) {
+             throw new IllegalArgumentException("You have already booked or waitlisted this slot.");
+        }
+
+        BookingStatus status;
+        if (slot.getStatus() == SlotStatus.AVAILABLE) {
+            slot.setStatus(SlotStatus.BOOKED);
+            slotRepository.save(slot);
+            status = BookingStatus.CONFIRMED;
+        } else if (slot.getStatus() == SlotStatus.BOOKED) {
+            status = BookingStatus.WAITLISTED;
+        } else {
+            throw new IllegalArgumentException("Slot is cancelled and not available for booking.");
+        }
+
+        Booking booking = Booking.builder()
+                .team(team)
+                .slot(slot)
+                .status(status)
+                .bookedAt(LocalDateTime.now())
+                .build();
+        return ResponseEntity.ok(adminService.mapToDTO(bookingRepository.save(booking)));
+    }
+
+    @PutMapping("/{id}/reschedule")
+    @Transactional
+    public ResponseEntity<BookingDTO> reschedule(@PathVariable Long id, @RequestBody BookingDTO dto) {
+        Booking existing = bookingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + id));
+        if (existing.getStatus() == BookingStatus.CANCELLED) {
+            throw new IllegalArgumentException("Cannot reschedule a cancelled booking.");
+        }
+
+        Slot newSlot = slotRepository.findById(dto.getSlotId())
+                .orElseThrow(() -> new IllegalArgumentException("New slot not found: " + dto.getSlotId()));
+
+        // Use primitive comparison to avoid JPA proxy / Long boxing issues
+        long existingSlotId = existing.getSlot().getId().longValue();
+        long newSlotIdVal = newSlot.getId().longValue();
+        if (existingSlotId == newSlotIdVal) {
+             throw new IllegalArgumentException("Cannot reschedule to the exact same slot.");
+        }
+
+        if (bookingRepository.existsByTeam_IdAndSlot_IdAndStatusNot(existing.getTeam().getId(), newSlot.getId(), BookingStatus.CANCELLED)) {
+             throw new IllegalArgumentException("You have already booked or waitlisted this new slot.");
+        }
+
+        // Release old slot if this was a confirmed booking
+        Slot oldSlot = existing.getSlot();
+        boolean wasConfirmed = existing.getStatus() == BookingStatus.CONFIRMED;
+        if (wasConfirmed) {
+            oldSlot.setStatus(SlotStatus.AVAILABLE);
+            slotRepository.save(oldSlot);
+            // Promote first waitlisted for old slot (excluding current booking)
+            final Long currentId = id;
+            bookingRepository.findBySlot_Id(oldSlot.getId()).stream()
+                    .filter(b -> !b.getId().equals(currentId) && b.getStatus() == BookingStatus.WAITLISTED)
+                    .findFirst()
+                    .ifPresent(b -> {
+                        b.setStatus(BookingStatus.CONFIRMED);
+                        bookingRepository.save(b);
+                        oldSlot.setStatus(SlotStatus.BOOKED);
+                        slotRepository.save(oldSlot);
+                    });
+        }
+
+        // Assign new slot
+        BookingStatus newStatus;
+        if (newSlot.getStatus() == SlotStatus.AVAILABLE) {
+            newSlot.setStatus(SlotStatus.BOOKED);
+            slotRepository.save(newSlot);
+            newStatus = BookingStatus.CONFIRMED;
+        } else if (newSlot.getStatus() == SlotStatus.BOOKED) {
+            newStatus = BookingStatus.WAITLISTED;
+        } else {
+            throw new IllegalArgumentException("Selected slot is not available.");
+        }
+
+        existing.setSlot(newSlot);
+        existing.setStatus(newStatus);
+        existing.setBookedAt(LocalDateTime.now());
+        return ResponseEntity.ok(adminService.mapToDTO(bookingRepository.save(existing)));
+    }
+
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<Void> cancelBooking(@PathVariable Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + id));
+        boolean wasConfirmed = booking.getStatus() == BookingStatus.CONFIRMED;
+        booking.setStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+
+        if (wasConfirmed) {
+            Slot slot = booking.getSlot();
+            slot.setStatus(SlotStatus.AVAILABLE);
+            slotRepository.save(slot);
+            bookingRepository.findBySlot_Id(slot.getId()).stream()
+                    .filter(b -> b.getStatus() == BookingStatus.WAITLISTED)
+                    .findFirst()
+                    .ifPresent(b -> {
+                        b.setStatus(BookingStatus.CONFIRMED);
+                        bookingRepository.save(b);
+                        slot.setStatus(SlotStatus.BOOKED);
+                        slotRepository.save(slot);
+                    });
+        }
+        return ResponseEntity.noContent().build();
+    }
+}
