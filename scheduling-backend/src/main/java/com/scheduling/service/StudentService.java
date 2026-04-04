@@ -30,11 +30,15 @@ public class StudentService {
     public TeamDTO registerTeam(TeamDTO dto) {
         // Validate email format explicitly
         if (dto.getEmail() == null || !EMAIL_PATTERN.matcher(dto.getEmail().trim()).matches()) {
-            throw new IllegalArgumentException("Invalid email format: " + dto.getEmail());
+            throw new IllegalArgumentException("Only Gmail addresses are allowed (e.g. name@gmail.com)");
         }
 
         if (teamRepository.existsByEmail(dto.getEmail().trim())) {
-            throw new IllegalArgumentException("Team with this email already exists: " + dto.getEmail());
+            throw new IllegalArgumentException("Email already registered. Use a different Gmail address.");
+        }
+
+        if (dto.getProjectName() != null && teamRepository.existsByProjectName(dto.getProjectName().trim())) {
+            throw new IllegalArgumentException("A team with this project name already exists.");
         }
 
         // Validate member names

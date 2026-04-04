@@ -2,17 +2,48 @@
 // Auto-detect API URL: use same origin when served from Spring Boot, fallback to Railway
 const API = (function() {
   const loc = window.location;
-  // If served from Spring Boot (same origin), use relative path
   if (loc.hostname !== '' && loc.protocol.startsWith('http')) {
     return loc.origin + '/api';
   }
-  // Fallback for local file:// or development
   return 'https://project-scheduling-system-production.up.railway.app/api';
 })();
 
 // Session state
-let currentStudentEmail = null;
-let isAdminLoggedIn = false;
+let currentStudentEmail = sessionStorage.getItem('studentEmail');
+let isAdminLoggedIn = sessionStorage.getItem('role') === 'ADMIN';
+
+// Initialize view on load
+window.addEventListener('DOMContentLoaded', () => {
+  const role = sessionStorage.getItem('role');
+  if (role === 'ADMIN') {
+    showModule('admin');
+  } else if (role === 'STUDENT' && currentStudentEmail) {
+    document.getElementById('studentEmailDisplay').textContent = currentStudentEmail;
+    showModule('student');
+  } else {
+    sessionStorage.clear();
+    currentStudentEmail = null;
+    isAdminLoggedIn = false;
+    showModule('registration');
+  }
+});
+
+// Prevent back-button access to protected pages
+window.addEventListener('popstate', () => {
+  const role = sessionStorage.getItem('role');
+  if (!role) showModule('registration');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// XSS PROTECTION — escape all user data before rendering
+// ══════════════════════════════════════════════════════════════════════
+
+function esc(str) {
+  if (str == null) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
 
 // ══════════════════════════════════════════════════════════════════════
 // UTILITIES (Loading, Errors, Toasts)
@@ -28,7 +59,7 @@ function setLoading(loading) {
   } else {
     overlay.classList.remove('active');
   }
-  document.querySelectorAll('button').forEach(btn => btn.disabled = loading);
+  document.querySelectorAll('button[type="submit"], .btn-primary, .btn-danger, .btn-warning').forEach(btn => btn.disabled = loading);
 }
 
 function showToast(message, type = 'success') {
@@ -43,7 +74,7 @@ function clearErrors() {
   document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
   document.querySelectorAll('.msg-success, .msg-error').forEach(el => {
     el.style.display = 'none';
-    el.innerHTML = '';
+    el.textContent = '';
   });
 }
 
@@ -65,14 +96,33 @@ function handleApiErrors(err) {
   }
 }
 
+function getRoleHeaders() {
+  const role = sessionStorage.getItem('role');
+  const headers = { 'Content-Type': 'application/json' };
+  if (role) headers['X-Role'] = role;
+  return headers;
+}
+
 async function apiFetch(url, options = {}) {
+  if (isLoading) return; // Prevent double-click / spam
   setLoading(true);
   clearErrors();
   try {
     const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: getRoleHeaders(),
       ...options
     });
+
+    if (res.status === 403) {
+      let errPayload;
+      try { errPayload = await res.json(); } catch(e) { errPayload = { error: 'Access denied.' }; }
+      // Force logout on 403
+      sessionStorage.clear();
+      currentStudentEmail = null;
+      isAdminLoggedIn = false;
+      showModule('registration');
+      throw errPayload;
+    }
 
     if (!res.ok) {
       let errPayload;
@@ -84,7 +134,7 @@ async function apiFetch(url, options = {}) {
     return await res.json();
   } catch (err) {
     if (err instanceof TypeError && err.message === 'Failed to fetch') {
-      throw { error: 'Cannot connect to server. Please check your connection and try again.' };
+      throw { error: 'Network error. Please check your connection and try again.' };
     }
     throw err;
   } finally {
@@ -93,11 +143,11 @@ async function apiFetch(url, options = {}) {
 }
 
 function badge(status) {
-  return `<span class="badge badge-${status.toLowerCase()}">${status}</span>`;
+  return `<span class="badge badge-${esc(status).toLowerCase()}">${esc(status)}</span>`;
 }
 
 function emptyMsg(text) {
-  return `<p class="empty-msg">${text}</p>`;
+  return `<p class="empty-msg">${esc(text)}</p>`;
 }
 
 function wrapTable(html) {
@@ -105,8 +155,14 @@ function wrapTable(html) {
 }
 
 function isValidEmail(email) {
-  return /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+  return /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
 }
+
+// Clear old messages on input change
+document.addEventListener('input', () => {
+  document.querySelectorAll('.error-text').forEach(el => el.textContent = '');
+  document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+});
 
 // ══════════════════════════════════════════════════════════════════════
 // NAVIGATION & AUTH
@@ -125,7 +181,6 @@ function toggleRequired(el, isVisible) {
 }
 
 function hideAllSections() {
-  document.getElementById('landing').style.display = 'none';
   document.querySelectorAll('.module').forEach(m => {
     m.style.display = 'none';
     toggleRequired(m, false);
@@ -144,14 +199,26 @@ function setActiveNav(id) {
   }
 }
 
-function showLanding() {
-  hideAllSections();
-  document.getElementById('landing').style.display = 'block';
-  setActiveNav('home');
-  clearErrors();
-}
-
 function showModule(moduleId) {
+  const role = sessionStorage.getItem('role');
+  
+  // Guard Admin
+  if (moduleId === 'admin' && role !== 'ADMIN') {
+    if (role === 'STUDENT') { showToast('Student cannot access admin module.', 'error'); return showModule('student'); }
+    return openAdminLogin();
+  }
+  
+  // Guard Student
+  if (moduleId === 'student' && role !== 'STUDENT') {
+    if (role === 'ADMIN') { showToast('Admin cannot access student module.', 'error'); return showModule('admin'); }
+    return openStudentLogin();
+  }
+
+  // Hide nav items based on role
+  document.getElementById('nav-admin').style.display = role === 'STUDENT' ? 'none' : '';
+  document.getElementById('nav-student').style.display = role === 'ADMIN' ? 'none' : '';
+  document.getElementById('nav-registration').style.display = (role === 'ADMIN' || role === 'STUDENT') ? 'none' : '';
+
   hideAllSections();
   if (moduleId) {
     const el = document.getElementById(moduleId);
@@ -224,6 +291,7 @@ async function handleAdminLogin(event) {
     });
     if (result.success) {
       isAdminLoggedIn = true;
+      sessionStorage.setItem('role', 'ADMIN');
       closeAdminLogin();
       showModule('admin');
       showToast('Admin login successful!', 'success');
@@ -237,7 +305,8 @@ async function handleAdminLogin(event) {
 
 function adminLogout() {
   isAdminLoggedIn = false;
-  showLanding();
+  sessionStorage.clear();
+  showModule('registration');
   showToast('Logged out successfully.', 'success');
 }
 
@@ -263,11 +332,13 @@ async function handleStudentLogin(event) {
   const email = document.getElementById('studentLoginEmail').value.trim();
 
   if (!email) { showError('studentLoginEmail', 'Email is required.'); return; }
-  if (!isValidEmail(email)) { showError('studentLoginEmail', 'Invalid email format.'); return; }
+  if (!isValidEmail(email)) { showError('studentLoginEmail', 'Only Gmail addresses are allowed (e.g. name@gmail.com)'); return; }
 
   try {
     const team = await apiFetch(`${API}/students/${encodeURIComponent(email)}/team`);
     currentStudentEmail = email;
+    sessionStorage.setItem('role', 'STUDENT');
+    sessionStorage.setItem('studentEmail', email);
     closeStudentLogin();
     document.getElementById('studentEmailDisplay').textContent = email;
     showModule('student');
@@ -294,7 +365,8 @@ function goToRegistration() {
 
 function studentLogout() {
   currentStudentEmail = null;
-  showLanding();
+  sessionStorage.clear();
+  showModule('registration');
   showToast('Logged out successfully.', 'success');
 }
 
@@ -342,7 +414,6 @@ function removeMemberField(btn) {
   }
   btn.closest('.member-row').remove();
   updateMemberCount();
-  // Re-number placeholders
   container.querySelectorAll('.member-row input').forEach((input, i) => {
     input.placeholder = `Member ${i + 1} name`;
   });
@@ -378,7 +449,7 @@ async function submitRegistration(event) {
   if (!projectName) { showError('projectName', 'Project name is required.'); hasError = true; }
   if (!leaderName) { showError('leaderName', 'Leader name is required.'); hasError = true; }
   if (!email) { showError('email', 'Email is required.'); hasError = true; }
-  else if (!isValidEmail(email)) { showError('email', 'Invalid email format.'); hasError = true; }
+  else if (!isValidEmail(email)) { showError('email', 'Only Gmail addresses are allowed (e.g. name@gmail.com)'); hasError = true; }
   if (memberNames.length === 0) { showError('members', 'At least 1 member name is required.'); hasError = true; }
   if (memberNames.length > 5) { showError('members', 'Maximum 5 members allowed.'); hasError = true; }
   if (hasError) return;
@@ -395,7 +466,9 @@ async function submitRegistration(event) {
   try {
     const team = await apiFetch(`${API}/students/register`, { method: 'POST', body: JSON.stringify(payload) });
     const msgDiv = document.getElementById('regMessage');
-    msgDiv.innerHTML = `<div class="msg-success">Team "<strong>${team.projectName}</strong>" registered successfully! (Team ID: ${team.id})</div>`;
+    msgDiv.textContent = `Team "${team.projectName}" registered successfully! (Team ID: ${team.id})`;
+    msgDiv.className = 'msg-success';
+    msgDiv.style.display = 'block';
     showToast('Team registered successfully!', 'success');
     document.querySelector('#registrationForm form').reset();
     resetMemberFields();
@@ -430,7 +503,7 @@ async function loadDemoDates() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Date</th><th>Action</th></tr></thead>
       <tbody>${dates.map(d => `<tr>
-        <td>${d.id}</td><td>${d.demoDate}</td>
+        <td>${esc(d.id)}</td><td>${esc(d.demoDate)}</td>
         <td><button onclick="deleteDemoDate(${d.id})" class="btn-danger">Delete</button></td>
       </tr>`).join('')}</tbody></table>`);
     populateDateSelects(dates);
@@ -438,7 +511,7 @@ async function loadDemoDates() {
 }
 
 async function deleteDemoDate(id) {
-  if (!confirm('Warning: Deleting this date removes ALL its slots and cancels related bookings. Proceed?')) return;
+  if (!confirm('Warning: Deleting this date removes ALL its slots and related bookings. Proceed?')) return;
   try {
     await apiFetch(`${API}/admin/dates/${id}`, { method: 'DELETE' });
     showToast('Date deleted.', 'success');
@@ -455,7 +528,11 @@ function populateDateSelects(dates) {
     const isFilter = sid === 'filterDateSelect';
     sel.innerHTML = isFilter ? '<option value="">All Dates</option>' : '<option value="">-- Select --</option>';
     dates.forEach(d => {
-      sel.innerHTML += `<option value="${d.id}" ${prev == d.id ? 'selected' : ''}>${d.demoDate}</option>`;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.demoDate;
+      if (String(prev) === String(d.id)) opt.selected = true;
+      sel.appendChild(opt);
     });
   });
 }
@@ -495,7 +572,7 @@ async function loadAdminSlots() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Date</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>${slots.map(s => `<tr>
-        <td>${s.id}</td><td>${s.demoDate}</td><td>${s.startTime}</td><td>${s.endTime}</td>
+        <td>${esc(s.id)}</td><td>${esc(s.demoDate)}</td><td>${esc(s.startTime)}</td><td>${esc(s.endTime)}</td>
         <td>${badge(s.status)}</td>
         <td><button onclick="deleteSlot(${s.id})" class="btn-danger">Delete</button></td>
       </tr>`).join('')}</tbody></table>`);
@@ -503,7 +580,7 @@ async function loadAdminSlots() {
 }
 
 async function deleteSlot(id) {
-  if (!confirm('Delete this slot? Related bookings will be cancelled.')) return;
+  if (!confirm('Delete this slot? Related bookings will be removed.')) return;
   try {
     await apiFetch(`${API}/admin/slots/${id}`, { method: 'DELETE' });
     showToast('Slot deleted.', 'success');
@@ -521,8 +598,8 @@ async function loadAllTeams() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Project</th><th>Leader</th><th>Email</th><th>Members</th></tr></thead>
       <tbody>${teams.map(t => `<tr>
-        <td>${t.id}</td><td>${t.projectName}</td><td>${t.leaderName}</td><td>${t.email}</td>
-        <td>${t.memberNames && t.memberNames.length ? t.memberNames.join(', ') : t.members + ' member(s)'}</td>
+        <td>${esc(t.id)}</td><td>${esc(t.projectName)}</td><td>${esc(t.leaderName)}</td><td>${esc(t.email)}</td>
+        <td>${t.memberNames && t.memberNames.length ? t.memberNames.map(esc).join(', ') : esc(t.members) + ' member(s)'}</td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { showToast('Failed to load teams.', 'error'); }
 }
@@ -535,8 +612,8 @@ async function loadAllBookings() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Team</th><th>Date</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>${bookings.map(b => `<tr>
-        <td>${b.id}</td><td>${b.teamProjectName}</td><td>${b.slotDate}</td>
-        <td>${b.slotStartTime} – ${b.slotEndTime}</td><td>${badge(b.status)}</td>
+        <td>${esc(b.id)}</td><td>${esc(b.teamProjectName)}</td><td>${esc(b.slotDate)}</td>
+        <td>${esc(b.slotStartTime)} – ${esc(b.slotEndTime)}</td><td>${badge(b.status)}</td>
         <td>${b.status !== 'CANCELLED' ? `<button onclick="adminCancelBookingById(${b.id})" class="btn-danger">Cancel</button>` : '—'}</td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { showToast('Failed to load bookings.', 'error'); }
@@ -561,8 +638,8 @@ async function loadWaitingList() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>Booking</th><th>Team</th><th>Date</th><th>Time</th></tr></thead>
       <tbody>${list.map(b => `<tr>
-        <td>${b.id}</td><td>${b.teamProjectName} (${b.teamEmail})</td>
-        <td>${b.slotDate}</td><td>${b.slotStartTime} – ${b.slotEndTime}</td>
+        <td>${esc(b.id)}</td><td>${esc(b.teamProjectName)} (${esc(b.teamEmail)})</td>
+        <td>${esc(b.slotDate)}</td><td>${esc(b.slotStartTime)} – ${esc(b.slotEndTime)}</td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { showToast('Failed to load waitlist.', 'error'); }
 }
@@ -577,7 +654,7 @@ async function loadFullSchedule() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Date</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
       <tbody>${slots.map(s => `<tr>
-        <td>${s.id}</td><td>${s.demoDate}</td><td>${s.startTime}</td><td>${s.endTime}</td><td>${badge(s.status)}</td>
+        <td>${esc(s.id)}</td><td>${esc(s.demoDate)}</td><td>${esc(s.startTime)}</td><td>${esc(s.endTime)}</td><td>${badge(s.status)}</td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { showToast('Failed to load schedule.', 'error'); }
 }
@@ -590,8 +667,8 @@ async function loadBookingSummary() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Team</th><th>Leader</th><th>Date</th><th>Time</th><th>Status</th></tr></thead>
       <tbody>${bookings.map(b => `<tr>
-        <td>${b.id}</td><td>${b.teamProjectName}</td><td>${b.teamLeaderName}</td>
-        <td>${b.slotDate}</td><td>${b.slotStartTime} – ${b.slotEndTime}</td><td>${badge(b.status)}</td>
+        <td>${esc(b.id)}</td><td>${esc(b.teamProjectName)}</td><td>${esc(b.teamLeaderName)}</td>
+        <td>${esc(b.slotDate)}</td><td>${esc(b.slotStartTime)} – ${esc(b.slotEndTime)}</td><td>${badge(b.status)}</td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { showToast('Failed to load summary.', 'error'); }
 }
@@ -643,7 +720,7 @@ async function loadAvailableSlots(forRescheduleBookingId = null) {
       }
 
       tableHtml += `<tr>
-        <td>${s.demoDate}</td><td>${s.startTime} – ${s.endTime}</td>
+        <td>${esc(s.demoDate)}</td><td>${esc(s.startTime)} – ${esc(s.endTime)}</td>
         <td>${badge(s.status)}</td>
         <td>${actionBtn}</td>
       </tr>`;
@@ -652,7 +729,7 @@ async function loadAvailableSlots(forRescheduleBookingId = null) {
 
     if (forRescheduleBookingId) {
       tableHtml = `<div class="reschedule-banner">
-          <span><strong>Reschedule Mode:</strong> Pick a new slot for booking #${forRescheduleBookingId}.</span>
+          <span><strong>Reschedule Mode:</strong> Pick a new slot for booking #${esc(forRescheduleBookingId)}.</span>
           <button onclick="loadAvailableSlots()" class="btn-secondary" style="margin:0;">Cancel</button>
         </div>` + wrapTable(tableHtml);
     } else {
@@ -686,17 +763,17 @@ async function loadMyTeam() {
   try {
     const t = await apiFetch(`${API}/students/${encodeURIComponent(email)}/team`);
     const membersDisplay = t.memberNames && t.memberNames.length
-      ? t.memberNames.join(', ')
-      : t.members + ' member(s)';
+      ? t.memberNames.map(esc).join(', ')
+      : esc(t.members) + ' member(s)';
     document.getElementById('myTeamContainer').innerHTML = wrapTable(`<table>
       <thead><tr><th>Field</th><th>Value</th></tr></thead>
       <tbody>
-        <tr><td><strong>Team ID</strong></td><td>${t.id}</td></tr>
-        <tr><td><strong>Project</strong></td><td>${t.projectName}</td></tr>
-        <tr><td><strong>Leader</strong></td><td>${t.leaderName}</td></tr>
-        <tr><td><strong>Email</strong></td><td>${t.email}</td></tr>
+        <tr><td><strong>Team ID</strong></td><td>${esc(t.id)}</td></tr>
+        <tr><td><strong>Project</strong></td><td>${esc(t.projectName)}</td></tr>
+        <tr><td><strong>Leader</strong></td><td>${esc(t.leaderName)}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${esc(t.email)}</td></tr>
         <tr><td><strong>Members</strong></td><td>${membersDisplay}</td></tr>
-        ${t.description ? `<tr><td><strong>Description</strong></td><td>${t.description}</td></tr>` : ''}
+        ${t.description ? `<tr><td><strong>Description</strong></td><td>${esc(t.description)}</td></tr>` : ''}
       </tbody></table>`);
   } catch (err) { handleApiErrors(err); }
 }
@@ -721,7 +798,7 @@ async function loadMyBookings() {
         actions = '—';
       }
       tableHtml += `<tr>
-        <td>${b.id}</td><td>${b.slotDate}</td><td>${b.slotStartTime} – ${b.slotEndTime}</td>
+        <td>${esc(b.id)}</td><td>${esc(b.slotDate)}</td><td>${esc(b.slotStartTime)} – ${esc(b.slotEndTime)}</td>
         <td>${badge(b.status)}</td>
         <td style="white-space:nowrap">${actions}</td>
       </tr>`;
@@ -772,7 +849,7 @@ async function loadPublicSchedule() {
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>Date</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
       <tbody>${slots.map(s => `<tr>
-        <td>${s.demoDate}</td><td>${s.startTime}</td><td>${s.endTime}</td><td>${badge(s.status)}</td>
+        <td>${esc(s.demoDate)}</td><td>${esc(s.startTime)}</td><td>${esc(s.endTime)}</td><td>${badge(s.status)}</td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { handleApiErrors(err); }
 }

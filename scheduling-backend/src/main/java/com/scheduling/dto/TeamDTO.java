@@ -24,7 +24,7 @@ public class TeamDTO {
     private String leaderName;
 
     @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @Pattern(regexp = "^[a-zA-Z0-9._%+-]+@gmail\\.com$", message = "Only Gmail addresses are allowed (e.g. name@gmail.com)")
     private String email;
 
     private String description;

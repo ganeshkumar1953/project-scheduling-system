@@ -13,7 +13,7 @@ public class AuthController {
     @Value("${app.admin.username:admin}")
     private String adminUsername;
 
-    @Value("${app.admin.password:admin123}")
+    @Value("${app.admin.password:Admin@2026Secure}")
     private String adminPassword;
 
     @PostMapping("/admin/login")

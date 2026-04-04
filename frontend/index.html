@@ -45,10 +45,10 @@
   <div id="studentLoginModal" class="modal-overlay">
     <div class="modal">
       <h3>📧 Student Login</h3>
-      <p style="color:var(--text-secondary); font-size:0.87rem; margin-bottom:14px;">Enter your registered email to continue.</p>
+      <p style="color:var(--text-secondary); font-size:0.87rem; margin-bottom:14px;">Enter your registered Gmail address to continue.</p>
       <form onsubmit="handleStudentLogin(event)">
         <label>Email:</label>
-        <input type="email" id="studentLoginEmail" required placeholder="your-email@example.com">
+        <input type="email" id="studentLoginEmail" required placeholder="yourname@gmail.com">
         <div id="studentLoginEmailErr" class="error-text"></div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" onclick="closeStudentLogin()">Cancel</button>
@@ -74,35 +74,11 @@
   <header>
     <h1><span>Optimized Project Scheduling System</span></h1>
     <nav id="mainNav">
-      <button id="nav-home" onclick="showLanding()">Home</button>
       <button id="nav-admin" onclick="openAdminLogin()">Admin</button>
       <button id="nav-registration" onclick="showModule('registration')">Registration</button>
       <button id="nav-student" onclick="openStudentLogin()">Student</button>
     </nav>
   </header>
-
-  <!-- Landing Page -->
-  <section id="landing" style="display:block;">
-    <h2>Welcome</h2>
-    <p>Select your role to get started with the scheduling system.</p>
-    <div class="role-cards">
-      <div class="role-card" onclick="openAdminLogin()" id="card-admin">
-        <div class="icon">🛡️</div>
-        <h3>Admin</h3>
-        <p>Manage schedules, slots, teams, and bookings</p>
-      </div>
-      <div class="role-card" onclick="showModule('registration')" id="card-registration">
-        <div class="icon">📝</div>
-        <h3>Registration</h3>
-        <p>Register your team for project demos</p>
-      </div>
-      <div class="role-card" onclick="openStudentLogin()" id="card-student">
-        <div class="icon">🎓</div>
-        <h3>Student</h3>
-        <p>Book slots, view schedule, manage bookings</p>
-      </div>
-    </div>
-  </section>
 
   <!-- Admin Module -->
   <section id="admin" class="module">
@@ -198,7 +174,6 @@
     <div class="action-card">
       <p style="color:var(--text-secondary); font-size:0.87rem; margin-bottom:12px;">Register your team to book demo slots. Each team can have 1–5 members.</p>
       <button type="button" class="btn-primary" onclick="openRegistrationForm()" style="margin-top:0;">Register Team</button>
-      <button type="button" class="btn-secondary" onclick="showLanding()" style="margin-left:8px;">Back</button>
     </div>
 
     <div id="registrationForm" class="form-container" style="display:none;">
@@ -213,8 +188,8 @@
         <input type="text" id="leaderName" required placeholder="Enter leader's full name">
         <div id="leaderNameErr" class="error-text"></div>
 
-        <label>Email:</label>
-        <input type="email" id="email" required placeholder="team-leader@example.com">
+        <label>Email (Gmail only):</label>
+        <input type="email" id="email" required placeholder="yourname@gmail.com">
         <div id="emailErr" class="error-text"></div>
 
         <label>Team Members (1–5):</label>
