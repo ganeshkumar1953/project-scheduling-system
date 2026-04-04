@@ -23,7 +23,7 @@ public class StudentService {
     private final AdminService adminService;
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
-            "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+            "^[a-zA-Z0-9._%+-]+@gmail\\.com$"
     );
 
     @Transactional

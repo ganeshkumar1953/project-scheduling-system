@@ -74,35 +74,13 @@
   <header>
     <h1><span>Optimized Project Scheduling System</span></h1>
     <nav id="mainNav">
-      <button id="nav-home" onclick="showLanding()">Home</button>
       <button id="nav-admin" onclick="openAdminLogin()">Admin</button>
       <button id="nav-registration" onclick="showModule('registration')">Registration</button>
       <button id="nav-student" onclick="openStudentLogin()">Student</button>
     </nav>
   </header>
 
-  <!-- Landing Page -->
-  <section id="landing" style="display:block;">
-    <h2>Welcome</h2>
-    <p>Select your role to get started with the scheduling system.</p>
-    <div class="role-cards">
-      <div class="role-card" onclick="openAdminLogin()" id="card-admin">
-        <div class="icon">🛡️</div>
-        <h3>Admin</h3>
-        <p>Manage schedules, slots, teams, and bookings</p>
-      </div>
-      <div class="role-card" onclick="showModule('registration')" id="card-registration">
-        <div class="icon">📝</div>
-        <h3>Registration</h3>
-        <p>Register your team for project demos</p>
-      </div>
-      <div class="role-card" onclick="openStudentLogin()" id="card-student">
-        <div class="icon">🎓</div>
-        <h3>Student</h3>
-        <p>Book slots, view schedule, manage bookings</p>
-      </div>
-    </div>
-  </section>
+
 
   <!-- Admin Module -->
   <section id="admin" class="module">

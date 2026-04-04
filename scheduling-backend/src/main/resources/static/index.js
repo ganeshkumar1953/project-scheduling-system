@@ -11,8 +11,21 @@ const API = (function() {
 })();
 
 // Session state
-let currentStudentEmail = null;
-let isAdminLoggedIn = false;
+let currentStudentEmail = localStorage.getItem('studentEmail');
+let isAdminLoggedIn = localStorage.getItem('role') === 'ADMIN';
+
+// Initialize view on load
+window.addEventListener('DOMContentLoaded', () => {
+  const role = localStorage.getItem('role');
+  if (role === 'ADMIN') {
+    showModule('admin');
+  } else if (role === 'STUDENT' && currentStudentEmail) {
+    document.getElementById('studentEmailDisplay').textContent = currentStudentEmail;
+    showModule('student');
+  } else {
+    showModule('registration'); // Redirect unauthenticated to registration
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════════
 // UTILITIES (Loading, Errors, Toasts)
@@ -125,7 +138,6 @@ function toggleRequired(el, isVisible) {
 }
 
 function hideAllSections() {
-  document.getElementById('landing').style.display = 'none';
   document.querySelectorAll('.module').forEach(m => {
     m.style.display = 'none';
     toggleRequired(m, false);
@@ -144,14 +156,26 @@ function setActiveNav(id) {
   }
 }
 
-function showLanding() {
-  hideAllSections();
-  document.getElementById('landing').style.display = 'block';
-  setActiveNav('home');
-  clearErrors();
-}
-
 function showModule(moduleId) {
+  const role = localStorage.getItem('role');
+  
+  // Guard Admin
+  if (moduleId === 'admin' && role !== 'ADMIN') {
+    if (role === 'STUDENT') { showToast('Student cannot access admin module.', 'error'); return showModule('student'); }
+    return openAdminLogin();
+  }
+  
+  // Guard Student
+  if (moduleId === 'student' && role !== 'STUDENT') {
+    if (role === 'ADMIN') { showToast('Admin cannot access student module.', 'error'); return showModule('admin'); }
+    return openStudentLogin();
+  }
+
+  // Hide nav items based on role
+  document.getElementById('nav-admin').style.display = role === 'STUDENT' ? 'none' : 'inline-block';
+  document.getElementById('nav-student').style.display = role === 'ADMIN' ? 'none' : 'inline-block';
+  document.getElementById('nav-registration').style.display = role === 'ADMIN' || role === 'STUDENT' ? 'none' : 'inline-block';
+
   hideAllSections();
   if (moduleId) {
     const el = document.getElementById(moduleId);
@@ -224,6 +248,7 @@ async function handleAdminLogin(event) {
     });
     if (result.success) {
       isAdminLoggedIn = true;
+      localStorage.setItem('role', 'ADMIN');
       closeAdminLogin();
       showModule('admin');
       showToast('Admin login successful!', 'success');
@@ -237,7 +262,8 @@ async function handleAdminLogin(event) {
 
 function adminLogout() {
   isAdminLoggedIn = false;
-  showLanding();
+  localStorage.removeItem('role');
+  showModule('registration');
   showToast('Logged out successfully.', 'success');
 }
 
@@ -268,6 +294,8 @@ async function handleStudentLogin(event) {
   try {
     const team = await apiFetch(`${API}/students/${encodeURIComponent(email)}/team`);
     currentStudentEmail = email;
+    localStorage.setItem('role', 'STUDENT');
+    localStorage.setItem('studentEmail', email);
     closeStudentLogin();
     document.getElementById('studentEmailDisplay').textContent = email;
     showModule('student');
@@ -294,7 +322,9 @@ function goToRegistration() {
 
 function studentLogout() {
   currentStudentEmail = null;
-  showLanding();
+  localStorage.removeItem('role');
+  localStorage.removeItem('studentEmail');
+  showModule('registration');
   showToast('Logged out successfully.', 'success');
 }
 

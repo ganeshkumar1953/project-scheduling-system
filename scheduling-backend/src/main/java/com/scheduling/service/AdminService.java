@@ -45,10 +45,7 @@ public class AdminService {
                 .orElseThrow(() -> new IllegalArgumentException("Demo date not found: " + id));
         List<Slot> slots = slotRepository.findByScheduleDate_Id(id);
         for (Slot slot : slots) {
-            bookingRepository.findBySlot_Id(slot.getId()).forEach(b -> {
-                b.setStatus(BookingStatus.CANCELLED);
-                bookingRepository.save(b);
-            });
+            bookingRepository.findBySlot_Id(slot.getId()).forEach(bookingRepository::delete);
             slotRepository.delete(slot);
         }
         scheduleDateRepository.delete(date);
@@ -84,10 +81,7 @@ public class AdminService {
     public void deleteSlot(Long id) {
         Slot slot = slotRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Slot not found: " + id));
-        bookingRepository.findBySlot_Id(id).forEach(b -> {
-            b.setStatus(BookingStatus.CANCELLED);
-            bookingRepository.save(b);
-        });
+        bookingRepository.findBySlot_Id(id).forEach(bookingRepository::delete);
         slotRepository.delete(slot);
     }
 
