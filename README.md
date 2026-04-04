@@ -2,139 +2,73 @@
 
 ## Description
 
-The Optimized Project Scheduling System is a full-stack web application designed to streamline the project presentation scheduling process. It securely connects students to available presentation slots while affording administrators complete authority over date management, slot creation, waitlists, and comprehensive status reporting. By employing a RESTful API architecture, it provides an intuitive, robust, and real-time mechanism to eliminate double-bookings and optimize institutional project presentations.
+The **Optimized Project Scheduling System** is a robust, full-stack web application designed to eliminate scheduling conflicts and streamline project presentation bookings for institutions. This production-ready system connects students to available presentation slots while affording administrators complete authority over date management, slot creation, waitlists, and comprehensive status reporting. It ensures 100% data consistency via a Spring Boot backend, a MySQL database, and real-time vanilla JS DOM updates.
 
 ## Features
 
-**Admin Module**
-- **Schedule Management:** Complete CRUD operations for demo dates and specific presentation slots.
-- **Reporting & Review:** View all registered teams, track corresponding bookings, and export detailed reports in CSV format.
-- **Operational Oversight:** Access and manage the automated waiting list, process cancellations, and perform administrative overrides.
+- **For Admins:**
+  - Full CRUD control over Demo Dates and specific time slots.
+  - See all incoming registrations, actively monitor waitlists, and override cancellations.
+  - One-click CSV reporting and team generation details.
 
-**Student Module**
-- **Team Initialization:** Intuitive flow for student team registration and data validation.
-- **Slot Booking:** Real-time visibility into available demo slots, allowing immediate booking or insertion into a waitlist.
-- **Self-Service Actions:** Secure portal to view personal team status, process cancellations, and reschedule conflicting bookings seamlessly.
-
-**Smart Systems**
-- **Automated Waitlist Promotion:** Intelligently bumps waitlisted teams into newly vacated spots immediately upon a cancellation.
-- **Concurrency & Validation:** Built-in safeguards (such as email verifications and database constraints) gracefully handle edge-cases to maintain state consistency and avoid over-booking loops.
+- **For Students:**
+  - Automated team initialization flows and immediate email validations.
+  - Interactive calendar interface to safely book, reschedule, or cancel a presentation slot without colliding with peers.
+  
+- **Intelligent Engine:**
+  - Hardened concurrency loops that lock slots instantly.
+  - Auto-promotion for Waitlist members if their desired spot vacates. 
 
 ## Tech Stack
 
-- **Frontend:** HTML5, CSS3 (Vanilla), JavaScript
-- **Backend:** Java, Spring Boot, Maven
-- **Database:** MySQL
-- **Architecture:** REST API, Model-View-Controller (MVC)
+*   **Frontend:** Vanilla JS (`fetch`), HTML5, CSS3, DOM manipulations.
+*   **Backend:** Spring Boot (Java), Spring Web, Spring Data JPA.
+*   **Database:** MySQL Server.
+*   **Deployment Environment:** Railway.app (CI/CD Pipeline).
 
-## Project Structure
+## 🚀 Live Demo URL
 
-```text
-project-scheduling-system/
-├── frontend/
-│   ├── index.html
-│   ├── index.css
-│   └── index.js
-├── scheduling-backend/
-│   ├── src/
-│   │   ├── main/java/com/scheduling/  # Core Java logic
-│   │   └── main/resources/            # Application configs
-│   └── pom.xml                        # Maven dependencies
-├── schema.sql                         # Database schema definition
-├── test_suite.ps1                     # Functional test scripts
-└── .gitignore                         # Build and IDE exclusions
-```
+The most current main branch is continuously integrated and deployed live here:
 
-## Installation & Setup
+**[https://project-scheduling-system-production.up.railway.app](https://project-scheduling-system-production.up.railway.app)**
 
-Follow these steps to establish a local instance for development and testing.
+## 🎮 How to Use (Access Instructions)
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/ganeshkumar1953/project-scheduling-system.git
-cd project-scheduling-system
-```
+Simply open your web browser and click on the Live URL above! There is no local setup necessary unless you're a developer. 
 
-### 2. Database Setup
-1. Ensure your local MySQL instance is running.
-2. Initialize the database executing the provided schema:
-```bash
-mysql -u your_username -p < schema.sql
-```
+### To use the system as an Administrator:
+1. Click the **"Admin Login"** equivalent on the Live Portal. 
+2. **Username**: *(Provide your configured admin username here, typically `admin` via system variables)*
+3. **Password**: *(Provide your configured admin password here)*
+4. Once logged in, navigate the portal to open up dates and generate slots!
 
-### 3. Backend Setup
-1. Navigate into the backend directory:
-```bash
-cd scheduling-backend
-```
-2. Update the database credentials located in `src/main/resources/application.properties`:
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/scheduling_db
-spring.datasource.username=YOUR_MYSQL_USERNAME
-spring.datasource.password=YOUR_MYSQL_PASSWORD
-```
+### To use the system as a Student:
+1. Navigate to the Live URL.
+2. Under **Student Registration**, input your Team Name, emails and metrics to officially instantiate your team.
+3. Once registered, view the open available slots listed.
 
-### 4. Run the Backend (Spring Boot)
-Build and run the Maven project:
-```bash
-mvn clean install
-mvn spring-boot:run
-```
-*The API will expose itself natively on port `8080`.*
+## 🧪 Demo Flow
 
-### 5. Run the Frontend
-Because it leverages vanilla languages natively supported by the browser, you may simply serve the `frontend/` directory across a local web server to access it. For instance, using Python:
-```bash
-cd ../frontend
-python -m http.server 3000
-```
-Open `http://localhost:3000` in your web browser. 
+Try mimicking this standard operation flow:
+1. **Register**: Sign up a test team with your email via the Student module.
+2. **Login Admin & Create Slot**: (Simulate) An Administrator allocates a 2:00PM slot for tomorrow.
+3. **Student Books Slot**: Go back as a student—the 2:00PM slot is immediately available. Click "Book Slot".
+4. **Waitlist Trigger**: (Optional) Try registering a _second_ team and attempting to book that exact 2:00PM slot to see the waitlist behavior capture your queue perfectly!
 
-## API Overview
+## Basic API Endpoints
 
-### Student Endpoints
-- `POST /api/students/teams` - Register an academic team
-- `GET /api/schedule/slots` - Fetch currently available project time slots
-- `POST /api/schedule/slots/book` - Complete a single slot booking sequence
-- `PUT /api/schedule/slots/reschedule` - Shift a pre-existing booking
-- `DELETE /api/schedule/slots/cancel` - Cancel a pre-existing booking
+-   `POST /api/students/teams` – Initializes a new team registration.
+-   `GET /api/schedule/slots` – Fetches live open presentation paths for teams.
+-   `POST /api/schedule/slots/book` – Locks down an available slot.
+-   `GET /api/admin/waiting-list` – Retrieves current waitlisted queue details.
 
-### Admin Endpoints
-- `GET /api/admin/dates` - Request all scheduled demo dates
-- `POST /api/admin/slots` - Initialize new presentation capacities
-- `GET /api/admin/waiting-list` - Pull current waitlist queues
-- `GET /api/admin/reports/csv` - Generate real-time system export reports
+## Deployment Info
 
-## Demo Flow
+This application guarantees stability via standard environment scaling processes.
+*   **Railway.app** watches the `main` GitHub branch.
+*   Any code merges instantly trigger a Maven `.jar` compilation container on Railway.
+*   The connection dynamically maps directly to Railway's Managed MySQL module using secure ENVs (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`), ensuring **no hardcoded credentials** live within this repository. 
 
-1. **Administration Set-up**: An Admin logs into the system to initialize the term's "Demo Dates" and subsequently divides dates into "Booking Slots".
-2. **Registration Phase**: Students access the client application, submit team details, and receive validation configurations.
-3. **Queue / Booking Event**: Student Teams visually interact with available slots. If a slot is completely filled, they can elect to join the respective Waitlist. 
-4. **Automated Promotion**: In the case an existing booked team reschedules or cancels via the portal, the primary waitlisted team is natively resolved via the backend to officially hold that spot.
-5. **Report Extraction**: The Administration generates finalized CSV reporting for grading and analytics. 
+## Author
 
-## Deployment Guide
-
-For production readiness:
-1. **Frontend**: The `frontend/` directory should be deployed to a CDN overlay or standard web host platform (e.g. Vercel, Netlify, or Nginx).
-2. **Backend**: Package the Spring Boot app into an optimal `.jar` via Maven (`mvn clean package`) and deploy across scalable application servers (e.g. AWS EC2, Heroku, or Azure App Service).
-3. **Database**: Utilize a managed Relational Database Service (RDS) to preserve MySQL continuity. Include updated environment credentials spanning your instance. 
-
-## Screenshots
-
-> *Add application screenshots here to demonstrate intuitive UI / UX functionalities.*
-
-![Admin Dashboard Placeholder](https://via.placeholder.com/800x400?text=Admin+Dashboard+Preview)
-![Student Booking Process Placeholder](https://via.placeholder.com/800x400?text=Student+Booking+View)
-
-## Future Improvements
-
-- **Authentication System**: Implement JWT-based OAUTH security for role-based verifications.
-- **Live Notifications**: Integrate WebSockets for real-time pushing alerts representing spot promotions.
-- **Dynamic Pagination**: Optimize endpoints with pagination structures for scaling enterprise institutions. 
-- **Calendar Integration**: Allow synchronization with Google Calendar or Microsoft Outlook for participants.
-
-## Author / Credits
-
-- **Ganesh Kumar M** - *Lead Developer* - [GitHub Profile](https://github.com/ganeshkumar1953)
-- Built leveraging standard MVC paradigms, optimizing traditional institutional constraints securely.
+- **[Ganesh Kumar M - ganeshkumar1953](https://github.com/ganeshkumar1953)** (Developer)
