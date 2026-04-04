@@ -157,6 +157,12 @@ public class AdminService {
     }
 
     public TeamDTO mapToDTO(Team team) {
+        List<String> memberNames = team.getTeamMembers() != null
+                ? team.getTeamMembers().stream()
+                    .map(TeamMember::getMemberName)
+                    .collect(Collectors.toList())
+                : List.of();
+
         return TeamDTO.builder()
                 .id(team.getId())
                 .projectName(team.getProjectName())
@@ -164,6 +170,7 @@ public class AdminService {
                 .leaderName(team.getLeaderName())
                 .email(team.getEmail())
                 .description(team.getDescription())
+                .memberNames(memberNames)
                 .build();
     }
 

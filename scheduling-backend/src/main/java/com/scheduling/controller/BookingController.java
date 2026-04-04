@@ -11,6 +11,7 @@ import com.scheduling.repository.BookingRepository;
 import com.scheduling.repository.SlotRepository;
 import com.scheduling.repository.TeamRepository;
 import com.scheduling.service.AdminService;
+import com.scheduling.service.EmailService;
 import com.scheduling.service.ScheduleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class BookingController {
     private final TeamRepository teamRepository;
     private final AdminService adminService;
     private final ScheduleService scheduleService;
+    private final EmailService emailService;
 
     @GetMapping("/available")
     public ResponseEntity<List<SlotDTO>> getAvailableSlots() {
@@ -79,7 +81,24 @@ public class BookingController {
                 .status(status)
                 .bookedAt(LocalDateTime.now())
                 .build();
-        return ResponseEntity.ok(adminService.mapToDTO(bookingRepository.save(booking)));
+        BookingDTO result = adminService.mapToDTO(bookingRepository.save(booking));
+
+        // Send email notification (async, non-blocking)
+        try {
+            String slotTime = slot.getStartTime() + " – " + slot.getEndTime();
+            String date = slot.getScheduleDate().getDemoDate().toString();
+            emailService.sendBookingConfirmation(
+                    team.getEmail(),
+                    team.getProjectName(),
+                    date,
+                    slotTime,
+                    status.name()
+            );
+        } catch (Exception e) {
+            // Email failure must never break booking flow
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/{id}/reschedule")
@@ -139,7 +158,25 @@ public class BookingController {
         existing.setSlot(newSlot);
         existing.setStatus(newStatus);
         existing.setBookedAt(LocalDateTime.now());
-        return ResponseEntity.ok(adminService.mapToDTO(bookingRepository.save(existing)));
+        BookingDTO result = adminService.mapToDTO(bookingRepository.save(existing));
+
+        // Send reschedule email notification (async, non-blocking)
+        try {
+            Team team = existing.getTeam();
+            String slotTime = newSlot.getStartTime() + " – " + newSlot.getEndTime();
+            String date = newSlot.getScheduleDate().getDemoDate().toString();
+            emailService.sendBookingConfirmation(
+                    team.getEmail(),
+                    team.getProjectName(),
+                    date,
+                    slotTime,
+                    "RESCHEDULED to " + newStatus.name()
+            );
+        } catch (Exception e) {
+            // Email failure must never break reschedule flow
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")

@@ -3,6 +3,9 @@ package com.scheduling.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "team")
 @Data
@@ -29,4 +32,10 @@ public class Team {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<TeamMember> teamMembers = new ArrayList<>();
 }

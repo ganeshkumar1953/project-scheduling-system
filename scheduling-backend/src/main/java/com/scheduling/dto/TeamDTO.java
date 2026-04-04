@@ -3,6 +3,8 @@ package com.scheduling.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,6 +17,7 @@ public class TeamDTO {
 
     @NotNull(message = "Number of members is required")
     @Min(value = 1, message = "Must have at least 1 member")
+    @Max(value = 5, message = "Maximum 5 members allowed")
     private Integer members;
 
     @NotBlank(message = "Leader name is required")
@@ -25,4 +28,6 @@ public class TeamDTO {
     private String email;
 
     private String description;
+
+    private List<String> memberNames;
 }

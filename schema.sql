@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS team (
   description  TEXT
 );
 
+-- Team Members (1 Team → Many Members, max 5)
+CREATE TABLE IF NOT EXISTS team_member (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  team_id     BIGINT       NOT NULL,
+  member_name VARCHAR(255) NOT NULL,
+  CONSTRAINT fk_member_team FOREIGN KEY (team_id) REFERENCES team(id) ON DELETE CASCADE
+);
+
 -- Slots
 CREATE TABLE IF NOT EXISTS slot (
   id               BIGINT AUTO_INCREMENT PRIMARY KEY,

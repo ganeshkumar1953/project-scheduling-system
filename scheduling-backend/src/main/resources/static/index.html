@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Optimized Project Scheduling System — Book and manage demo slots for project presentations.">
   <title>Optimized Project Scheduling System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='85'>📅</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -10,36 +16,106 @@
   <!-- Loading Overlay -->
   <div id="loadingOverlay" class="loading-overlay">
     <div class="spinner"></div>
-    <div style="margin-top: 10px; color: white;">Processing...</div>
+    <div class="loading-text">Processing...</div>
   </div>
 
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
+  <!-- Admin Login Modal -->
+  <div id="adminLoginModal" class="modal-overlay">
+    <div class="modal">
+      <h3>🔐 Admin Login</h3>
+      <form onsubmit="handleAdminLogin(event)">
+        <label>Username:</label>
+        <input type="text" id="adminUsername" required autocomplete="username" placeholder="Enter username">
+        <div id="adminUsernameErr" class="error-text"></div>
+        <label>Password:</label>
+        <input type="password" id="adminPassword" required autocomplete="current-password" placeholder="Enter password">
+        <div id="adminPasswordErr" class="error-text"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeAdminLogin()">Cancel</button>
+          <button type="submit" class="btn-primary" style="margin-top:0">Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Student Email Login Modal -->
+  <div id="studentLoginModal" class="modal-overlay">
+    <div class="modal">
+      <h3>📧 Student Login</h3>
+      <p style="color:var(--text-secondary); font-size:0.87rem; margin-bottom:14px;">Enter your registered email to continue.</p>
+      <form onsubmit="handleStudentLogin(event)">
+        <label>Email:</label>
+        <input type="email" id="studentLoginEmail" required placeholder="your-email@example.com">
+        <div id="studentLoginEmailErr" class="error-text"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeStudentLogin()">Cancel</button>
+          <button type="submit" class="btn-primary" style="margin-top:0">Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Not Registered Modal -->
+  <div id="notRegisteredModal" class="modal-overlay">
+    <div class="modal" style="text-align:center;">
+      <div style="font-size:2.5rem; margin-bottom:12px;">⚠️</div>
+      <h3>Not Registered</h3>
+      <p style="color:var(--text-secondary); font-size:0.87rem; margin-bottom:18px;">You need to register your team first before accessing the student module.</p>
+      <div class="modal-actions" style="justify-content:center;">
+        <button class="btn-secondary" onclick="closeNotRegistered()">Close</button>
+        <button class="btn-primary" style="margin-top:0" onclick="goToRegistration()">Register Now</button>
+      </div>
+    </div>
+  </div>
+
   <header>
-    <h1>Optimized Project Scheduling System</h1>
-    <nav>
-      <button onclick="showModule('admin')">Admin Module</button>
-      <button onclick="showModule('registration')">Student Registration</button>
-      <button onclick="showModule('student')">Student Module</button>
+    <h1><span>Optimized Project Scheduling System</span></h1>
+    <nav id="mainNav">
+      <button id="nav-home" onclick="showLanding()">Home</button>
+      <button id="nav-admin" onclick="openAdminLogin()">Admin</button>
+      <button id="nav-registration" onclick="showModule('registration')">Registration</button>
+      <button id="nav-student" onclick="openStudentLogin()">Student</button>
     </nav>
   </header>
 
+  <!-- Landing Page -->
+  <section id="landing" style="display:block;">
+    <h2>Welcome</h2>
+    <p>Select your role to get started with the scheduling system.</p>
+    <div class="role-cards">
+      <div class="role-card" onclick="openAdminLogin()" id="card-admin">
+        <div class="icon">🛡️</div>
+        <h3>Admin</h3>
+        <p>Manage schedules, slots, teams, and bookings</p>
+      </div>
+      <div class="role-card" onclick="showModule('registration')" id="card-registration">
+        <div class="icon">📝</div>
+        <h3>Registration</h3>
+        <p>Register your team for project demos</p>
+      </div>
+      <div class="role-card" onclick="openStudentLogin()" id="card-student">
+        <div class="icon">🎓</div>
+        <h3>Student</h3>
+        <p>Book slots, view schedule, manage bookings</p>
+      </div>
+    </div>
+  </section>
+
   <!-- Admin Module -->
   <section id="admin" class="module">
-    <h2>Admin Main Menu</h2>
+    <h2>Admin Dashboard</h2>
     <ul>
-      <li onclick="showSubmenu('schedule')">Manage Schedule</li>
-      <li onclick="showSubmenu('teams')">Manage Teams &amp; Bookings</li>
-      <li onclick="showSubmenu('reports')">Reports &amp; Export</li>
-      <li onclick="showModule('')">Logout</li>
+      <li onclick="showSubmenu('schedule')">📅 Manage Schedule</li>
+      <li onclick="showSubmenu('teams')">👥 Manage Teams &amp; Bookings</li>
+      <li onclick="showSubmenu('reports')">📊 Reports &amp; Export</li>
+      <li onclick="adminLogout()">🚪 Logout</li>
     </ul>
 
     <!-- Submenus -->
     <div id="schedule" class="submenu">
-      <h3>Manage Schedule</h3>
-
-      <!-- Add Demo Date -->
       <div class="action-card">
         <h4>Add Demo Date</h4>
         <div id="dateSuccessMsg" class="msg-success" style="display:none;"></div>
@@ -51,13 +127,11 @@
         </form>
       </div>
 
-      <!-- Demo Dates List -->
       <div class="action-card">
-        <h4>Demo Dates <button class="btn-refresh" onclick="loadDemoDates()">&#8635;</button></h4>
+        <h4>Demo Dates <button type="button" class="btn-refresh" onclick="loadDemoDates()">↻</button></h4>
         <div id="datesContainer"></div>
       </div>
 
-      <!-- Create Slot -->
       <div class="action-card">
         <h4>Create Slot</h4>
         <div id="slotSuccessMsg" class="msg-success" style="display:none;"></div>
@@ -65,148 +139,142 @@
           <div id="slotDateSelectErr" class="error-text"></div>
           <label>Select Date:</label>
           <select id="slotDateSelect" required></select>
-          
           <label>Start Time:</label>
           <input type="time" id="slotStart" required>
           <div id="slotStartErr" class="error-text"></div>
-          
           <label>End Time:</label>
           <input type="time" id="slotEnd" required>
           <div id="slotEndErr" class="error-text"></div>
-          
           <button type="submit">Create Slot</button>
         </form>
       </div>
 
-      <!-- View Slots -->
       <div class="action-card">
         <h4>View Slots
           <select id="filterDateSelect" onchange="loadAdminSlots()">
             <option value="">All Dates</option>
           </select>
-          <button class="btn-refresh" onclick="loadAdminSlots()">&#8635;</button>
+          <button type="button" class="btn-refresh" onclick="loadAdminSlots()">↻</button>
         </h4>
         <div id="adminSlotsContainer"></div>
       </div>
     </div>
 
     <div id="teams" class="submenu">
-      <h3>Manage Teams &amp; Bookings</h3>
-
       <div class="action-card">
-        <h4>All Teams <button class="btn-refresh" onclick="loadAllTeams()">&#8635;</button></h4>
+        <h4>All Teams <button type="button" class="btn-refresh" onclick="loadAllTeams()">↻</button></h4>
         <div id="allTeamsContainer"></div>
       </div>
-
       <div class="action-card">
-        <h4>All Bookings <button class="btn-refresh" onclick="loadAllBookings()">&#8635;</button></h4>
+        <h4>All Bookings <button type="button" class="btn-refresh" onclick="loadAllBookings()">↻</button></h4>
         <div id="allBookingsContainer"></div>
       </div>
-
       <div class="action-card">
-        <h4>Waiting List <button class="btn-refresh" onclick="loadWaitingList()">&#8635;</button></h4>
+        <h4>Waiting List <button type="button" class="btn-refresh" onclick="loadWaitingList()">↻</button></h4>
         <div id="waitlistContainer"></div>
       </div>
     </div>
 
     <div id="reports" class="submenu">
-      <h3>Reports &amp; Export</h3>
-
       <div class="action-card">
-        <h4>Full Schedule <button class="btn-refresh" onclick="loadFullSchedule()">&#8635;</button></h4>
+        <h4>Full Schedule <button type="button" class="btn-refresh" onclick="loadFullSchedule()">↻</button></h4>
         <div id="fullScheduleContainer"></div>
       </div>
-
       <div class="action-card">
-        <h4>Booking Summary <button class="btn-refresh" onclick="loadBookingSummary()">&#8635;</button></h4>
+        <h4>Booking Summary <button type="button" class="btn-refresh" onclick="loadBookingSummary()">↻</button></h4>
         <div id="bookingSummaryContainer"></div>
       </div>
-
       <div class="action-card">
         <h4>Export</h4>
-        <button onclick="exportCsv('schedule')" class="btn-export">Export Schedule (CSV)</button>
-        <button onclick="exportCsv('teams')" class="btn-export">Export Teams Report (CSV)</button>
+        <button type="button" onclick="exportCsv('schedule')" class="btn-export">Export Schedule (CSV)</button>
+        <button type="button" onclick="exportCsv('teams')" class="btn-export">Export Teams (CSV)</button>
       </div>
     </div>
   </section>
 
-  <!-- Student Registration Module -->
+  <!-- Registration Module -->
   <section id="registration" class="module">
-    <h2>Student Registration</h2>
-    <button onclick="openRegistrationForm()">Register Team</button>
-    <button onclick="showModule('')">Back / Exit</button>
+    <h2>Team Registration</h2>
+    <div class="action-card">
+      <p style="color:var(--text-secondary); font-size:0.87rem; margin-bottom:12px;">Register your team to book demo slots. Each team can have 1–5 members.</p>
+      <button type="button" class="btn-primary" onclick="openRegistrationForm()" style="margin-top:0;">Register Team</button>
+      <button type="button" class="btn-secondary" onclick="showLanding()" style="margin-left:8px;">Back</button>
+    </div>
 
-    <!-- Registration Form -->
-    <div id="registrationForm" class="form-container">
+    <div id="registrationForm" class="form-container" style="display:none;">
       <h3>Register Your Team</h3>
       <div id="regMessage"></div>
       <form onsubmit="submitRegistration(event)">
         <label>Project Name:</label>
-        <input type="text" id="projectName" required>
+        <input type="text" id="projectName" required placeholder="Enter project name">
         <div id="projectNameErr" class="error-text"></div>
 
-        <label>Number of Members:</label>
-        <input type="number" id="members" min="1" required>
-        <div id="membersErr" class="error-text"></div>
-
         <label>Team Leader Name:</label>
-        <input type="text" id="leaderName" required>
+        <input type="text" id="leaderName" required placeholder="Enter leader's full name">
         <div id="leaderNameErr" class="error-text"></div>
 
         <label>Email:</label>
-        <input type="email" id="email" required>
+        <input type="email" id="email" required placeholder="team-leader@example.com">
         <div id="emailErr" class="error-text"></div>
 
-        <label>Project Description:</label>
-        <textarea id="description"></textarea>
+        <label>Team Members (1–5):</label>
+        <div id="memberFieldsContainer">
+          <div class="member-row">
+            <input type="text" name="memberName" required placeholder="Member 1 name">
+          </div>
+        </div>
+        <div class="member-count-info" id="memberCountInfo">1 / 5 members</div>
+        <button type="button" class="btn-add-member" onclick="addMemberField()" id="btnAddMember">+ Add Member</button>
+        <div id="membersErr" class="error-text"></div>
+
+        <label>Project Description (optional):</label>
+        <textarea id="description" placeholder="Brief description of your project"></textarea>
         <div id="descriptionErr" class="error-text"></div>
 
-        <button type="submit" id="btn-reg-submit">Submit</button>
+        <button type="submit" id="btn-reg-submit">Submit Registration</button>
       </form>
     </div>
   </section>
 
   <!-- Student Module -->
   <section id="student" class="module">
-    <h2>Student Main Menu</h2>
+    <h2>Student Dashboard</h2>
 
-    <!-- Email identifier -->
-    <div class="action-card">
-      <label><strong>Your Registered Email:</strong></label>
-      <input type="email" id="studentEmail" placeholder="Enter your registered email" required style="width:100%;box-sizing:border-box;margin-top:5px">
-      <div id="studentEmailErr" class="error-text"></div>
+    <div class="action-card" style="background: var(--primary-bg); border-color: rgba(99,102,241,0.2);">
+      <p style="font-size:0.85rem; color:var(--gray-600);"><strong>Logged in as:</strong> <span id="studentEmailDisplay" style="color:var(--primary); font-weight:600;"></span></p>
     </div>
 
     <ul>
-      <li onclick="showSubmenu('slotBooking')">Slot Booking</li>
-      <li onclick="showSubmenu('teamBooking')">My Team &amp; Booking</li>
-      <li onclick="showSubmenu('scheduleView')">View Schedule</li>
-      <li onclick="showModule('')">Logout</li>
+      <li onclick="showSubmenu('slotBooking')">🎯 Slot Booking</li>
+      <li onclick="showSubmenu('teamBooking')">👥 My Team &amp; Booking</li>
+      <li onclick="showSubmenu('scheduleView')">📅 View Schedule</li>
+      <li onclick="studentLogout()">🚪 Logout</li>
     </ul>
 
     <!-- Submenus -->
     <div id="slotBooking" class="submenu">
-      <h3>Slot Booking</h3>
-
       <div class="action-card">
-        <h4>Available Slots <button class="btn-refresh" onclick="loadAvailableSlots()">&#8635;</button></h4>
+        <h4>Available Slots <button type="button" class="btn-refresh" onclick="loadAvailableSlots()">↻</button></h4>
         <div id="availableSlotsContainer"></div>
       </div>
     </div>
 
     <div id="teamBooking" class="submenu">
-      <h3>My Team &amp; Booking</h3>
-      <button onclick="loadMyTeam()">View Team Details</button>
-      <div id="myTeamContainer" style="margin-top:10px"></div>
-
-      <button onclick="loadMyBookings()" style="margin-top:10px">View My Bookings</button>
-      <div id="myBookingsContainer" style="margin-top:10px"></div>
+      <div class="action-card">
+        <h4>My Team Details <button type="button" class="btn-refresh" onclick="loadMyTeam()">↻</button></h4>
+        <div id="myTeamContainer"></div>
+      </div>
+      <div class="action-card">
+        <h4>My Bookings <button type="button" class="btn-refresh" onclick="loadMyBookings()">↻</button></h4>
+        <div id="myBookingsContainer"></div>
+      </div>
     </div>
 
     <div id="scheduleView" class="submenu">
-      <h3>View Schedule</h3>
-      <button onclick="loadPublicSchedule()">View Full Schedule</button>
-      <div id="publicScheduleContainer" style="margin-top:10px"></div>
+      <div class="action-card">
+        <h4>Public Schedule <button type="button" class="btn-refresh" onclick="loadPublicSchedule()">↻</button></h4>
+        <div id="publicScheduleContainer"></div>
+      </div>
     </div>
   </section>
 
