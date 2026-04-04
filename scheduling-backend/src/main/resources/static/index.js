@@ -1,5 +1,5 @@
 // index.js — Optimized Project Scheduling System
-const API = 'http://localhost:8080/api';
+const API = 'https://project-scheduling-system-production.up.railway.app/api';
 
 // ══════════════════════════════════════════════════════════════════════
 // UTILITIES (Loading, Errors, Toasts)

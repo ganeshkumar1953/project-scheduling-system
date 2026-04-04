@@ -2,7 +2,7 @@
 # Comprehensive Test Suite for Optimized Project Scheduling System
 # ============================================================
 
-$API = "http://localhost:8080/api"
+$API = "https://project-scheduling-system-production.up.railway.app/api"
 $passed = 0
 $failed = 0
 $bugs = @()

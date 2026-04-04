@@ -1,12 +1,6 @@
 // index.js — Optimized Project Scheduling System
 // Determine API URL based on environment
-const DEV_API = 'http://localhost:8080/api';
-// Replace with actual production backend URL after deployment (e.g., Render or Railway URL)
-const PROD_API = 'https://your-production-backend.up.railway.app/api'; 
-
-const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') 
-  ? DEV_API 
-  : PROD_API;
+const API = 'https://project-scheduling-system-production.up.railway.app/api';
 
 // ══════════════════════════════════════════════════════════════════════
 // UTILITIES (Loading, Errors, Toasts)
