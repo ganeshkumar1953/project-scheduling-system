@@ -14,7 +14,7 @@ import java.net.http.HttpResponse;
 public class EmailService {
 
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
-    private static final String RESEND_API_KEY = "re_SRnmzy6g_LbuB7a2KRugaYbTGFWGpHS5v";
+    private static final String RESEND_API_KEY = System.getenv("re_dmrDZL8C_324iFWzgLtn2zfccVF216WzB");
     private static final String FROM_EMAIL = "onboarding@resend.dev";
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
