@@ -130,16 +130,26 @@ public class BookingController {
         if (wasConfirmed) {
             oldSlot.setStatus(SlotStatus.AVAILABLE);
             slotRepository.save(oldSlot);
-            // Promote first waitlisted for old slot (excluding current booking)
-            final Long currentId = id;
-            bookingRepository.findBySlot_Id(oldSlot.getId()).stream()
-                    .filter(b -> !b.getId().equals(currentId) && b.getStatus() == BookingStatus.WAITLISTED)
-                    .findFirst()
-                    .ifPresent(b -> {
-                        b.setStatus(BookingStatus.CONFIRMED);
-                        bookingRepository.save(b);
+            // Promote first waitlisted for old slot (FIFO by bookedAt, excluding current booking)
+            bookingRepository.findFirstBySlot_IdAndStatusOrderByBookedAtAsc(oldSlot.getId(), BookingStatus.WAITLISTED)
+                    .filter(b -> !b.getId().equals(id))
+                    .ifPresent(promoted -> {
+                        promoted.setStatus(BookingStatus.CONFIRMED);
+                        bookingRepository.save(promoted);
                         oldSlot.setStatus(SlotStatus.BOOKED);
                         slotRepository.save(oldSlot);
+
+                        // Send promotion email (async, non-blocking)
+                        try {
+                            Team promotedTeam = promoted.getTeam();
+                            String pSlotTime = oldSlot.getStartTime() + " – " + oldSlot.getEndTime();
+                            String pDate = oldSlot.getScheduleDate().getDemoDate().toString();
+                            emailService.sendBookingConfirmation(
+                                    promotedTeam.getEmail(), promotedTeam.getProjectName(),
+                                    pDate, pSlotTime, "CONFIRMED (promoted from waitlist)");
+                        } catch (Exception e) {
+                            // Email failure must never break reschedule flow
+                        }
                     });
         }
 
@@ -188,18 +198,41 @@ public class BookingController {
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
 
+        // Send cancellation email (async, non-blocking)
+        try {
+            Team cancelledTeam = booking.getTeam();
+            Slot cancelledSlot = booking.getSlot();
+            String slotTime = cancelledSlot.getStartTime() + " – " + cancelledSlot.getEndTime();
+            String date = cancelledSlot.getScheduleDate().getDemoDate().toString();
+            emailService.sendBookingConfirmation(
+                    cancelledTeam.getEmail(), cancelledTeam.getProjectName(), date, slotTime, "CANCELLED");
+        } catch (Exception e) {
+            // Email failure must never break cancellation flow
+        }
+
         if (wasConfirmed) {
             Slot slot = booking.getSlot();
             slot.setStatus(SlotStatus.AVAILABLE);
             slotRepository.save(slot);
-            bookingRepository.findBySlot_Id(slot.getId()).stream()
-                    .filter(b -> b.getStatus() == BookingStatus.WAITLISTED)
-                    .findFirst()
-                    .ifPresent(b -> {
-                        b.setStatus(BookingStatus.CONFIRMED);
-                        bookingRepository.save(b);
+            // Promote first waitlisted booking for this slot (FIFO by bookedAt)
+            bookingRepository.findFirstBySlot_IdAndStatusOrderByBookedAtAsc(slot.getId(), BookingStatus.WAITLISTED)
+                    .ifPresent(promoted -> {
+                        promoted.setStatus(BookingStatus.CONFIRMED);
+                        bookingRepository.save(promoted);
                         slot.setStatus(SlotStatus.BOOKED);
                         slotRepository.save(slot);
+
+                        // Send promotion email (async, non-blocking)
+                        try {
+                            Team promotedTeam = promoted.getTeam();
+                            String slotTime = slot.getStartTime() + " – " + slot.getEndTime();
+                            String date = slot.getScheduleDate().getDemoDate().toString();
+                            emailService.sendBookingConfirmation(
+                                    promotedTeam.getEmail(), promotedTeam.getProjectName(),
+                                    date, slotTime, "CONFIRMED (promoted from waitlist)");
+                        } catch (Exception e) {
+                            // Email failure must never break cancellation flow
+                        }
                     });
         }
         return ResponseEntity.noContent().build();

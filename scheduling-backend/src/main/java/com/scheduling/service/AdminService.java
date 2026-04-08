@@ -6,6 +6,7 @@ import com.scheduling.entity.Booking.BookingStatus;
 import com.scheduling.entity.Slot.SlotStatus;
 import com.scheduling.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,12 +15,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminService {
 
     private final ScheduleDateRepository scheduleDateRepository;
     private final SlotRepository slotRepository;
     private final TeamRepository teamRepository;
     private final BookingRepository bookingRepository;
+    private final EmailService emailService;
 
     // ── Demo Date Management ──────────────────────────────────────────────
 
@@ -110,19 +113,41 @@ public class AdminService {
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
 
+        // Send cancellation email (async, non-blocking)
+        try {
+            Team team = booking.getTeam();
+            Slot slot = booking.getSlot();
+            String slotTime = slot.getStartTime() + " – " + slot.getEndTime();
+            String date = slot.getScheduleDate().getDemoDate().toString();
+            emailService.sendBookingConfirmation(
+                    team.getEmail(), team.getProjectName(), date, slotTime, "CANCELLED");
+        } catch (Exception e) {
+            log.error("Failed to send cancellation email for booking {}: {}", bookingId, e.getMessage());
+        }
+
         if (wasConfirmed) {
             Slot slot = booking.getSlot();
             slot.setStatus(SlotStatus.AVAILABLE);
             slotRepository.save(slot);
-            // Promote first waitlisted booking for this slot
-            bookingRepository.findBySlot_Id(slot.getId()).stream()
-                    .filter(b -> b.getStatus() == BookingStatus.WAITLISTED)
-                    .findFirst()
-                    .ifPresent(b -> {
-                        b.setStatus(BookingStatus.CONFIRMED);
-                        bookingRepository.save(b);
+            // Promote first waitlisted booking for this slot (FIFO by bookedAt)
+            bookingRepository.findFirstBySlot_IdAndStatusOrderByBookedAtAsc(slot.getId(), BookingStatus.WAITLISTED)
+                    .ifPresent(promoted -> {
+                        promoted.setStatus(BookingStatus.CONFIRMED);
+                        bookingRepository.save(promoted);
                         slot.setStatus(SlotStatus.BOOKED);
                         slotRepository.save(slot);
+
+                        // Send promotion email (async, non-blocking)
+                        try {
+                            Team promotedTeam = promoted.getTeam();
+                            String slotTime = slot.getStartTime() + " – " + slot.getEndTime();
+                            String date = slot.getScheduleDate().getDemoDate().toString();
+                            emailService.sendBookingConfirmation(
+                                    promotedTeam.getEmail(), promotedTeam.getProjectName(),
+                                    date, slotTime, "CONFIRMED (promoted from waitlist)");
+                        } catch (Exception e) {
+                            log.error("Failed to send promotion email for booking {}: {}", promoted.getId(), e.getMessage());
+                        }
                     });
         }
     }
