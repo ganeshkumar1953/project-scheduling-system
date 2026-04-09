@@ -68,6 +68,12 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllTeams());
     }
 
+    @DeleteMapping("/teams/{teamId}")
+    public ResponseEntity<Void> deleteTeam(@PathVariable Long teamId) {
+        adminService.deleteTeam(teamId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/bookings")
     public ResponseEntity<List<BookingDTO>> getAllBookings() {
         return ResponseEntity.ok(adminService.getAllBookings());

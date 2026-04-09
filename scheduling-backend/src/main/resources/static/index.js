@@ -596,13 +596,27 @@ async function loadAllTeams() {
     const c = document.getElementById('allTeamsContainer');
     if (!teams.length) { c.innerHTML = emptyMsg('No teams registered yet.'); return; }
     c.innerHTML = wrapTable(`<table>
-      <thead><tr><th>ID</th><th>Project</th><th>Leader</th><th>Email</th><th>Members</th></tr></thead>
+      <thead><tr><th>ID</th><th>Project</th><th>Leader</th><th>Email</th><th>Members</th><th>Action</th></tr></thead>
       <tbody>${teams.map(t => `<tr>
         <td>${esc(t.id)}</td><td>${esc(t.projectName)}</td><td>${esc(t.leaderName)}</td><td>${esc(t.email)}</td>
         <td>${t.memberNames && t.memberNames.length ? t.memberNames.map(esc).join(', ') : esc(t.members) + ' member(s)'}</td>
+        <td><button onclick="deleteTeam(${t.id}, '${esc(t.projectName).replace(/'/g, "\\'")}')" class="btn-danger">Delete</button></td>
       </tr>`).join('')}</tbody></table>`);
   } catch (err) { showToast('Failed to load teams.', 'error'); }
 }
+
+async function deleteTeam(teamId, teamName) {
+  if (!confirm(`⚠️ Are you sure you want to delete team "${teamName}" and ALL its data (members, bookings)?\\n\\nThis action cannot be undone.`)) return;
+  try {
+    await apiFetch(`${API}/admin/teams/${teamId}`, { method: 'DELETE' });
+    showToast('Team deleted successfully!', 'success');
+    await loadAllTeams();
+    await loadAllBookings();
+    await loadWaitingList();
+    await loadAdminSlots();
+  } catch (err) { handleApiErrors(err); }
+}
+
 
 async function loadAllBookings() {
   try {

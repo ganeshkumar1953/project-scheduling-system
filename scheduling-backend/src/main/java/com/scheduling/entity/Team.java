@@ -38,4 +38,10 @@ public class Team {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<TeamMember> teamMembers = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<Booking> bookings = new ArrayList<>();
 }

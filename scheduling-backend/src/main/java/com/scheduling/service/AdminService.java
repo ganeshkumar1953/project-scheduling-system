@@ -106,6 +106,32 @@ public class AdminService {
     }
 
     @Transactional
+    public void deleteTeam(Long teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Team not found: " + teamId));
+
+        // 1. Release any slots that had CONFIRMED bookings for this team back to AVAILABLE
+        List<Booking> teamBookings = bookingRepository.findByTeam_Id(teamId);
+        for (Booking booking : teamBookings) {
+            if (booking.getStatus() == BookingStatus.CONFIRMED) {
+                Slot slot = booking.getSlot();
+                slot.setStatus(SlotStatus.AVAILABLE);
+                slotRepository.save(slot);
+                log.info("Released slot {} back to AVAILABLE after deleting team {}", slot.getId(), teamId);
+            }
+        }
+
+        // 2. Manually delete all bookings for this team (belt-and-suspenders with JPA cascade)
+        bookingRepository.deleteAll(teamBookings);
+        bookingRepository.flush();
+        log.info("Deleted {} booking(s) for team {}", teamBookings.size(), teamId);
+
+        // 3. Delete the team (cascades to team_members via JPA)
+        teamRepository.delete(team);
+        log.info("Successfully deleted team {} ({})", teamId, team.getProjectName());
+    }
+
+    @Transactional
     public void cancelBooking(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingId));
