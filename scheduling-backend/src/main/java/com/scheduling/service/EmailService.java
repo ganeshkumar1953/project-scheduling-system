@@ -1,88 +1,85 @@
 package com.scheduling.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class EmailService {
 
     private static final String FROM_EMAIL = "kumarganesh6092@gmail.com";
 
-    private final JavaMailSender mailSender;
+    // 🔥 Generic email sender (Brevo API)
+    @Async
+    public void sendEmail(String toEmail, String subject, String content) {
+        try {
+            String body = """
+            {
+              "sender": {"name":"Project Scheduling System","email":"%s"},
+              "to": [{"email":"%s"}],
+              "subject":"%s",
+              "htmlContent":"%s"
+            }
+            """.formatted(FROM_EMAIL, toEmail, subject, content);
 
-    /**
-     * Sends a booking confirmation / status email asynchronously via Gmail SMTP.
-     * Failures are logged but never propagate to break the booking flow.
-     */
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .header("accept", "application/json")
+                    .header("api-key", System.getenv("BREVO_API_KEY"))
+                    .header("content-type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+
+            log.info("📧 Brevo response: {}", response.body());
+            log.info("✅ Email sent to {}", toEmail);
+
+        } catch (Exception e) {
+            log.error("❌ Email failed to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    // 📩 Booking Email
     @Async
     public void sendBookingConfirmation(String toEmail, String projectName, String date, String slotTime, String status) {
-        log.info("📨 Preparing to send booking email to recipient: {}", toEmail);
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(FROM_EMAIL);
-            message.setTo(toEmail);
-            message.setSubject("Project Demo Slot Booking Status");
-            message.setText(buildBookingText(projectName, date, slotTime, status));
-            mailSender.send(message);
-            log.info("✅ Booking email sent successfully to {}", toEmail);
-        } catch (MailException e) {
-            log.error("❌ Failed to send booking email to {}: {}", toEmail, e.getMessage());
-        } catch (Exception e) {
-            log.error("❌ Unexpected error sending booking email to {}: {}", toEmail, e.getMessage());
-        }
+        String content = """
+        <h2>Project Demo Slot Booking</h2>
+        <p>Your booking status has been updated.</p>
+        <ul>
+            <li><b>Project:</b> %s</li>
+            <li><b>Date:</b> %s</li>
+            <li><b>Time:</b> %s</li>
+            <li><b>Status:</b> %s</li>
+        </ul>
+        <p>Thank you,<br>Project Scheduling System</p>
+        """.formatted(projectName, date, slotTime, status.toUpperCase());
+
+        sendEmail(toEmail, "Project Slot Booking Status", content);
     }
 
-    /**
-     * Sends a team registration confirmation email asynchronously via Gmail SMTP.
-     * Failures are logged but never propagate to break the registration flow.
-     */
+    // 📩 Registration Email
     @Async
     public void sendRegistrationConfirmation(String toEmail, String projectName, String leaderName, int memberCount) {
-        log.info("📨 Preparing to send registration email to recipient: {}", toEmail);
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(FROM_EMAIL);
-            message.setTo(toEmail);
-            message.setSubject("Team Registration Confirmed – Optimized Project Scheduling System");
-            message.setText(buildRegistrationText(projectName, leaderName, memberCount));
-            mailSender.send(message);
-            log.info("✅ Registration email sent successfully to {}", toEmail);
-        } catch (MailException e) {
-            log.error("❌ Failed to send registration email to {}: {}", toEmail, e.getMessage());
-        } catch (Exception e) {
-            log.error("❌ Unexpected error sending registration email to {}: {}", toEmail, e.getMessage());
-        }
-    }
+        String content = """
+        <h2>Team Registration Successful</h2>
+        <p>Your team has been registered successfully.</p>
+        <ul>
+            <li><b>Project:</b> %s</li>
+            <li><b>Leader:</b> %s</li>
+            <li><b>Members:</b> %d</li>
+        </ul>
+        <p>You can now book your demo slot.</p>
+        <p>Thank you,<br>Project Scheduling System</p>
+        """.formatted(projectName, leaderName, memberCount);
 
-    // ── Text Templates ─────────────────────────────────────────────────
-
-    private String buildBookingText(String projectName, String date, String slotTime, String status) {
-        return "Hello,\n\n"
-                + "Your project demo slot booking status has been updated.\n\n"
-                + "Project Name : " + projectName + "\n"
-                + "Demo Date    : " + date + "\n"
-                + "Time Slot    : " + slotTime + "\n"
-                + "Status       : " + status.toUpperCase() + "\n\n"
-                + "If you have any questions, please contact your course coordinator.\n\n"
-                + "Thank you,\n"
-                + "Optimized Project Scheduling System";
-    }
-
-    private String buildRegistrationText(String projectName, String leaderName, int memberCount) {
-        return "Hello,\n\n"
-                + "Your team has been successfully registered!\n\n"
-                + "Project Name : " + projectName + "\n"
-                + "Team Leader  : " + leaderName + "\n"
-                + "Members      : " + memberCount + " member(s)\n\n"
-                + "You can now log in to book a demo slot for your project presentation.\n\n"
-                + "Thank you,\n"
-                + "Optimized Project Scheduling System";
+        sendEmail(toEmail, "Team Registration Confirmed", content);
     }
 }
