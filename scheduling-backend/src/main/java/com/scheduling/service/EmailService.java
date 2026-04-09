@@ -14,7 +14,7 @@ import java.net.http.HttpResponse;
 public class EmailService {
 
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
-    private static final String FROM_EMAIL = "onboarding@resend.dev";
+    private static final String FROM_EMAIL = "Ganesh <kumarganesh6092@gmail.com>";
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
@@ -37,6 +37,7 @@ public class EmailService {
             log.warn("⚠️ RESEND_API_KEY not configured — skipping email to {}", toEmail);
             return;
         }
+        log.info("📨 Preparing to send booking email to recipient: {}", toEmail);
         try {
             String htmlBody = buildBookingHtml(projectName, date, slotTime, status);
             sendEmail(apiKey, toEmail, "Project Demo Slot Booking Status", htmlBody);
@@ -56,6 +57,7 @@ public class EmailService {
             log.warn("⚠️ RESEND_API_KEY not configured — skipping registration email to {}", toEmail);
             return;
         }
+        log.info("📨 Preparing to send registration email to recipient: {}", toEmail);
         try {
             String htmlBody = buildRegistrationHtml(projectName, leaderName, memberCount);
             sendEmail(apiKey, toEmail, "Team Registration Confirmed", htmlBody);
