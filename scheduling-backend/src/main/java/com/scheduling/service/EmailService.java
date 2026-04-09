@@ -14,77 +14,111 @@ import java.net.http.HttpResponse;
 public class EmailService {
 
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
-    private static final String RESEND_API_KEY = System.getenv("re_dmrDZL8C_324iFWzgLtn2zfccVF216WzB");
     private static final String FROM_EMAIL = "onboarding@resend.dev";
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     /**
-     * Sends a booking confirmation email asynchronously via Resend API.
+     * Reads Resend API key from environment variable RESEND_API_KEY.
+     * Returns null if not configured — emails will be skipped with a warning.
+     */
+    private String getApiKey() {
+        return System.getenv("RESEND_API_KEY");
+    }
+
+    /**
+     * Sends a booking confirmation / status email asynchronously via Resend API.
      * Failures are logged but never propagate to break the booking flow.
      */
     @Async
     public void sendBookingConfirmation(String toEmail, String projectName, String date, String slotTime, String status) {
+        String apiKey = getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("⚠️ RESEND_API_KEY not configured — skipping email to {}", toEmail);
+            return;
+        }
         try {
-            String htmlBody = buildHtmlBody(projectName, date, slotTime, status);
-
-            // Escape JSON special characters in the HTML body
-            String escapedHtml = htmlBody
-                    .replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t");
-
-            String jsonPayload = String.format(
-                    "{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":\"%s\",\"html\":\"%s\"}",
-                    FROM_EMAIL,
-                    toEmail,
-                    "Project Demo Slot Booking Status",
-                    escapedHtml
-            );
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(RESEND_API_URL))
-                    .header("Authorization", "Bearer " + RESEND_API_KEY)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            int statusCode = response.statusCode();
-            if (statusCode == 200 || statusCode == 201) {
-                log.info("✅ Email sent successfully to {} via Resend API. Response: {}", toEmail, response.body());
-            } else {
-                log.error("❌ Resend API returned status {}: {}", statusCode, response.body());
-            }
+            String htmlBody = buildBookingHtml(projectName, date, slotTime, status);
+            sendEmail(apiKey, toEmail, "Project Demo Slot Booking Status", htmlBody);
         } catch (Exception e) {
-            log.error("❌ Failed to send email to {} via Resend API: {}", toEmail, e.getMessage());
+            log.error("❌ Failed to send booking email to {}: {}", toEmail, e.getMessage());
         }
     }
 
     /**
-     * Builds a styled HTML email body for booking notifications.
+     * Sends a team registration confirmation email asynchronously via Resend API.
+     * Failures are logged but never propagate to break the registration flow.
      */
-    private String buildHtmlBody(String projectName, String date, String slotTime, String status) {
+    @Async
+    public void sendRegistrationConfirmation(String toEmail, String projectName, String leaderName, int memberCount) {
+        String apiKey = getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("⚠️ RESEND_API_KEY not configured — skipping registration email to {}", toEmail);
+            return;
+        }
+        try {
+            String htmlBody = buildRegistrationHtml(projectName, leaderName, memberCount);
+            sendEmail(apiKey, toEmail, "Team Registration Confirmed", htmlBody);
+        } catch (Exception e) {
+            log.error("❌ Failed to send registration email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    /**
+     * Core method — sends an email via Resend REST API.
+     */
+    private void sendEmail(String apiKey, String toEmail, String subject, String htmlBody) throws Exception {
+        String escapedHtml = htmlBody
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+
+        String escapedSubject = subject.replace("\"", "\\\"");
+
+        String jsonPayload = String.format(
+                "{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":\"%s\",\"html\":\"%s\"}",
+                FROM_EMAIL,
+                toEmail,
+                escapedSubject,
+                escapedHtml
+        );
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(RESEND_API_URL))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        log.info("📧 Sending email to {} | Subject: {}", toEmail, subject);
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        int statusCode = response.statusCode();
+        if (statusCode == 200 || statusCode == 201) {
+            log.info("✅ Email sent successfully to {} | Response: {}", toEmail, response.body());
+        } else {
+            log.error("❌ Resend API returned status {}: {}", statusCode, response.body());
+        }
+    }
+
+    // ── HTML Templates ─────────────────────────────────────────────────
+
+    private String buildBookingHtml(String projectName, String date, String slotTime, String status) {
         String statusColor;
-        switch (status.toUpperCase()) {
-            case "CONFIRMED":
-                statusColor = "#28a745";
-                break;
-            case "WAITLISTED":
-                statusColor = "#ffc107";
-                break;
-            case "CANCELLED":
-                statusColor = "#dc3545";
-                break;
-            case "RESCHEDULED":
-                statusColor = "#17a2b8";
-                break;
-            default:
-                statusColor = "#6c757d";
-                break;
+        String upperStatus = status.toUpperCase();
+        if (upperStatus.contains("CONFIRMED")) {
+            statusColor = "#28a745";
+        } else if (upperStatus.contains("WAITLISTED")) {
+            statusColor = "#ffc107";
+        } else if (upperStatus.contains("CANCELLED")) {
+            statusColor = "#dc3545";
+        } else if (upperStatus.contains("RESCHEDULED")) {
+            statusColor = "#17a2b8";
+        } else {
+            statusColor = "#6c757d";
         }
 
         return "<div style=\"font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">"
@@ -102,7 +136,7 @@ public class EmailService {
                 + "<td style=\"padding: 12px; border-bottom: 1px solid #f0f0f0; color: #333;\">" + escapeHtml(slotTime) + "</td></tr>"
                 + "<tr><td style=\"padding: 12px; color: #555; font-weight: 600;\">Status</td>"
                 + "<td style=\"padding: 12px;\"><span style=\"background: " + statusColor + "; color: #fff; padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 14px;\">"
-                + escapeHtml(status.toUpperCase()) + "</span></td></tr>"
+                + escapeHtml(upperStatus) + "</span></td></tr>"
                 + "</table>"
                 + "</div>"
                 + "<div style=\"background: #f8f9fa; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e0e0e0; border-top: none; text-align: center;\">"
@@ -111,9 +145,30 @@ public class EmailService {
                 + "</div>";
     }
 
-    /**
-     * Basic HTML escaping to prevent XSS in email content.
-     */
+    private String buildRegistrationHtml(String projectName, String leaderName, int memberCount) {
+        return "<div style=\"font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">"
+                + "<div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;\">"
+                + "<h1 style=\"color: #ffffff; margin: 0; font-size: 24px;\">🎉 Team Registration Confirmed</h1>"
+                + "<p style=\"color: #e0d4f7; margin-top: 8px;\">Optimized Project Scheduling System</p>"
+                + "</div>"
+                + "<div style=\"background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;\">"
+                + "<p style=\"color: #333; font-size: 16px;\">Your team has been successfully registered!</p>"
+                + "<table style=\"width: 100%; border-collapse: collapse; margin-top: 16px;\">"
+                + "<tr><td style=\"padding: 12px; border-bottom: 1px solid #f0f0f0; color: #555; font-weight: 600;\">Project Name</td>"
+                + "<td style=\"padding: 12px; border-bottom: 1px solid #f0f0f0; color: #333;\">" + escapeHtml(projectName) + "</td></tr>"
+                + "<tr><td style=\"padding: 12px; border-bottom: 1px solid #f0f0f0; color: #555; font-weight: 600;\">Team Leader</td>"
+                + "<td style=\"padding: 12px; border-bottom: 1px solid #f0f0f0; color: #333;\">" + escapeHtml(leaderName) + "</td></tr>"
+                + "<tr><td style=\"padding: 12px; color: #555; font-weight: 600;\">Members</td>"
+                + "<td style=\"padding: 12px; color: #333;\">" + memberCount + " member(s)</td></tr>"
+                + "</table>"
+                + "<p style=\"color: #555; font-size: 14px; margin-top: 20px;\">You can now log in to book demo slots for your project presentation.</p>"
+                + "</div>"
+                + "<div style=\"background: #f8f9fa; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e0e0e0; border-top: none; text-align: center;\">"
+                + "<p style=\"color: #888; font-size: 13px; margin: 0;\">Thank you for using the Optimized Project Scheduling System.</p>"
+                + "</div>"
+                + "</div>";
+    }
+
     private String escapeHtml(String input) {
         if (input == null) return "";
         return input

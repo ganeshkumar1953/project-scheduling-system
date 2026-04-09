@@ -499,7 +499,7 @@ async function loadDemoDates() {
   try {
     const dates = await apiFetch(`${API}/admin/dates`);
     const c = document.getElementById('datesContainer');
-    if (!dates.length) { c.innerHTML = emptyMsg('No demo dates added yet.'); populateDateSelects([]); return; }
+    if (!dates || !dates.length) { c.innerHTML = emptyMsg('No demo dates added yet.'); populateDateSelects([]); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Date</th><th>Action</th></tr></thead>
       <tbody>${dates.map(d => `<tr>
@@ -594,7 +594,7 @@ async function loadAllTeams() {
   try {
     const teams = await apiFetch(`${API}/admin/teams`);
     const c = document.getElementById('allTeamsContainer');
-    if (!teams.length) { c.innerHTML = emptyMsg('No teams registered yet.'); return; }
+    if (!teams || !teams.length) { c.innerHTML = emptyMsg('No teams registered yet.'); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Project</th><th>Leader</th><th>Email</th><th>Members</th><th>Action</th></tr></thead>
       <tbody>${teams.map(t => `<tr>
@@ -622,7 +622,7 @@ async function loadAllBookings() {
   try {
     const bookings = await apiFetch(`${API}/admin/bookings`);
     const c = document.getElementById('allBookingsContainer');
-    if (!bookings.length) { c.innerHTML = emptyMsg('No bookings found.'); return; }
+    if (!bookings || !bookings.length) { c.innerHTML = emptyMsg('No bookings found.'); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Team</th><th>Date</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>${bookings.map(b => `<tr>
@@ -648,7 +648,7 @@ async function loadWaitingList() {
   try {
     const list = await apiFetch(`${API}/admin/bookings/waitlist`);
     const c = document.getElementById('waitlistContainer');
-    if (!list.length) { c.innerHTML = emptyMsg('No bookings in waiting list.'); return; }
+    if (!list || !list.length) { c.innerHTML = emptyMsg('No bookings in waiting list.'); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>Booking</th><th>Team</th><th>Date</th><th>Time</th></tr></thead>
       <tbody>${list.map(b => `<tr>
@@ -664,7 +664,7 @@ async function loadFullSchedule() {
   try {
     const slots = await apiFetch(`${API}/admin/reports/schedule`);
     const c = document.getElementById('fullScheduleContainer');
-    if (!slots.length) { c.innerHTML = emptyMsg('No schedule data found.'); return; }
+    if (!slots || !slots.length) { c.innerHTML = emptyMsg('No schedule data found.'); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Date</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
       <tbody>${slots.map(s => `<tr>
@@ -677,7 +677,7 @@ async function loadBookingSummary() {
   try {
     const bookings = await apiFetch(`${API}/admin/reports/summary`);
     const c = document.getElementById('bookingSummaryContainer');
-    if (!bookings.length) { c.innerHTML = emptyMsg('No bookings found.'); return; }
+    if (!bookings || !bookings.length) { c.innerHTML = emptyMsg('No bookings found.'); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>ID</th><th>Team</th><th>Leader</th><th>Date</th><th>Time</th><th>Status</th></tr></thead>
       <tbody>${bookings.map(b => `<tr>
@@ -712,7 +712,7 @@ async function loadAvailableSlots(forRescheduleBookingId = null) {
     const slots = await apiFetch(forRescheduleBookingId ? `${API}/bookings/all` : `${API}/bookings/available`);
     const c = document.getElementById('availableSlotsContainer');
 
-    if (!slots.length) {
+    if (!slots || !slots.length) {
       c.innerHTML = emptyMsg(forRescheduleBookingId ? 'No slots found.' : 'No slots available right now.');
       return;
     }
@@ -798,7 +798,7 @@ async function loadMyBookings() {
   try {
     const bookings = await apiFetch(`${API}/students/${encodeURIComponent(email)}/bookings`);
     const c = document.getElementById('myBookingsContainer');
-    if (!bookings.length) { c.innerHTML = emptyMsg('No bookings found.'); return; }
+    if (!bookings || !bookings.length) { c.innerHTML = emptyMsg('No bookings found.'); return; }
 
     let tableHtml = `<table>
       <thead><tr><th>ID</th><th>Date</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
@@ -859,7 +859,7 @@ async function loadPublicSchedule() {
   try {
     const slots = await apiFetch(`${API}/bookings/all`);
     const c = document.getElementById('publicScheduleContainer');
-    if (!slots.length) { c.innerHTML = emptyMsg('No schedule data found.'); return; }
+    if (!slots || !slots.length) { c.innerHTML = emptyMsg('No schedule data found.'); return; }
     c.innerHTML = wrapTable(`<table>
       <thead><tr><th>Date</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
       <tbody>${slots.map(s => `<tr>

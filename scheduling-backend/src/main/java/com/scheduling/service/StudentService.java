@@ -21,6 +21,8 @@ public class StudentService {
     private final TeamRepository teamRepository;
     private final BookingRepository bookingRepository;
     private final AdminService adminService;
+    private final EmailService emailService;
+
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[a-zA-Z0-9._%+-]+@gmail\\.com$"
@@ -78,7 +80,21 @@ public class StudentService {
             team.getTeamMembers().add(member);
         }
 
-        return adminService.mapToDTO(teamRepository.save(team));
+        Team savedTeam = teamRepository.save(team);
+
+        // Send registration confirmation email (async, non-blocking)
+        try {
+            emailService.sendRegistrationConfirmation(
+                    savedTeam.getEmail(),
+                    savedTeam.getProjectName(),
+                    savedTeam.getLeaderName(),
+                    savedTeam.getMembers()
+            );
+        } catch (Exception e) {
+            // Email failure must never break registration flow
+        }
+
+        return adminService.mapToDTO(savedTeam);
     }
 
     public TeamDTO getTeamByEmail(String email) {
