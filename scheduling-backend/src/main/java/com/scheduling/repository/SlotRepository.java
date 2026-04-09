@@ -11,5 +11,6 @@ import java.util.List;
 public interface SlotRepository extends JpaRepository<Slot, Long> {
     List<Slot> findByScheduleDate_Id(Long scheduleDateId);
     List<Slot> findByStatus(SlotStatus status);
+    List<Slot> findByStatusIn(List<SlotStatus> statuses);
     List<Slot> findByScheduleDate_IdAndStatus(Long scheduleDateId, SlotStatus status);
 }

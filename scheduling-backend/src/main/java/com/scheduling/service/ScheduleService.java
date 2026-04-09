@@ -17,7 +17,7 @@ public class ScheduleService {
     private final AdminService adminService;
 
     public List<SlotDTO> getAvailableSlots() {
-        return slotRepository.findByStatus(SlotStatus.AVAILABLE).stream()
+        return slotRepository.findByStatusIn(List.of(SlotStatus.AVAILABLE, SlotStatus.BOOKED)).stream()
                 .map(adminService::mapToDTO)
                 .collect(Collectors.toList());
     }

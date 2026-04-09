@@ -764,7 +764,15 @@ async function bookSlot(slotId) {
       method: 'POST',
       body: JSON.stringify({ teamId: team.id, slotId: slotId })
     });
-    showToast(`Slot booked! Status: ${booking.status}. Booking ID: ${booking.id}`, 'success');
+    
+    if (booking.status === 'WAITLISTED') {
+      showToast('Slot full. You have been added to waitlist', 'warning');
+    } else if (booking.status === 'CONFIRMED') {
+      showToast('Slot booked successfully', 'success');
+    } else {
+      showToast(`Slot booked! Status: ${booking.status}`, 'success');
+    }
+    
     await loadAvailableSlots();
   } catch (err) { handleApiErrors(err); }
 }
@@ -848,7 +856,15 @@ async function confirmReschedule(bookingId, newSlotId) {
       method: 'PUT',
       body: JSON.stringify({ slotId: newSlotId })
     });
-    showToast(`Successfully rescheduled! Status: ${booking.status}`, 'success');
+    
+    if (booking.status === 'WAITLISTED') {
+      showToast('Slot full. You have been added to waitlist', 'warning');
+    } else if (booking.status === 'CONFIRMED') {
+      showToast('Slot booked successfully', 'success');
+    } else {
+      showToast(`Successfully rescheduled! Status: ${booking.status}`, 'success');
+    }
+    
     await loadAvailableSlots();
   } catch (err) { handleApiErrors(err); }
 }
