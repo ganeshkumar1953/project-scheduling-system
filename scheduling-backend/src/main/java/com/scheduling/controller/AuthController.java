@@ -9,17 +9,19 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
-    @Value("${app.admin.username:admin}")
+    @Value("${ADMIN_USERNAME}")
     private String adminUsername;
 
-    @Value("${app.admin.password:Admin@2026Secure}")
+    @Value("${ADMIN_PASSWORD}")
     private String adminPassword;
 
     @PostMapping("/admin/login")
     public ResponseEntity<Map<String, Object>> adminLogin(@RequestBody Map<String, String> credentials) {
         String username = credentials.getOrDefault("username", "");
         String password = credentials.getOrDefault("password", "");
+
+        System.out.println("Received username/password: " + username + " / " + password);
+        System.out.println("Expected username/password: " + adminUsername + " / " + adminPassword);
 
         if (adminUsername.equals(username) && adminPassword.equals(password)) {
             return ResponseEntity.ok(Map.of("success", true, "message", "Login successful"));
