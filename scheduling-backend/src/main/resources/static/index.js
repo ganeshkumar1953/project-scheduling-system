@@ -110,6 +110,7 @@ async function apiFetch(url, options = {}) {
   try {
     const res = await fetch(url, {
       headers: getRoleHeaders(),
+      credentials: 'include',
       ...options
     });
 
@@ -687,9 +688,34 @@ async function loadBookingSummary() {
   } catch (err) { showToast('Failed to load summary.', 'error'); }
 }
 
-function exportCsv(type) {
+async function exportCsv(type) {
   const url = type === 'schedule' ? `${API}/admin/reports/export/csv` : `${API}/admin/reports/export/teams-csv`;
-  window.open(url, '_blank');
+  const filename = type === 'schedule' ? 'schedule.csv' : 'teams.csv';
+  console.log('Export request:', url, 'Headers:', getRoleHeaders());
+  try {
+    const res = await fetch(url, {
+      headers: getRoleHeaders(),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Export failed:', res.status, err);
+      showToast('Export failed: ' + (res.status === 403 ? 'Access denied. Please login again.' : 'Server error'), 'error');
+      return;
+    }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    showToast('Export downloaded successfully!', 'success');
+  } catch (err) {
+    console.error('Export error:', err);
+    showToast('Export failed. Please try again.', 'error');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════

@@ -10,9 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 
 /**
- * Validates X-Role header on protected API endpoints.
- * Admin APIs require X-Role: ADMIN
- * Booking write APIs require X-Role: STUDENT
+ * Validates session / X-Role header on protected API endpoints.
+ * Admin APIs require a valid HTTP session with ROLE=ADMIN.
+ * Booking write APIs require X-Role: STUDENT header.
  */
 @Component
 public class RoleInterceptor implements HandlerInterceptor {
@@ -30,32 +30,58 @@ public class RoleInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // Allow OPTIONS (CORS preflight)
+        // Allow OPTIONS (CORS preflight) — never block pre-flight
         if ("OPTIONS".equalsIgnoreCase(method)) return true;
 
-        // Allow public endpoints without role checks
+        // ── Public endpoints ────────────────────────────────────────────
         if (path.startsWith("/api/auth/")) return true;
         if (path.startsWith("/api/students/register") && "POST".equalsIgnoreCase(method)) return true;
-        // Allow GET on /api/bookings/available and /api/bookings/all (public schedule)
         if (path.startsWith("/api/bookings/available") && "GET".equalsIgnoreCase(method)) return true;
         if (path.startsWith("/api/bookings/all") && "GET".equalsIgnoreCase(method)) return true;
 
         String role = request.getHeader("X-Role");
 
-        // Admin endpoints 
+        // ── Admin endpoints — must have a valid server-side session ─────
         if (path.startsWith("/api/admin/")) {
-            if (!"ADMIN".equalsIgnoreCase(role)) {
-                sendForbidden(response, "Access denied. Admin login required.");
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+
+            // ── DEBUG LOGGING (leave in — useful for Render logs) ────────
+            System.out.println("=== ADMIN AUTH CHECK ===");
+            System.out.println("  Method+Path : " + method + " " + path);
+            System.out.println("  Session ID  : " + (session != null ? session.getId() : "null — no session cookie received"));
+            System.out.println("  Session ROLE: " + (session != null ? session.getAttribute("ROLE") : "N/A"));
+            System.out.println("  Cookie hdr  : " + request.getHeader("Cookie"));
+            System.out.println("  Origin hdr  : " + request.getHeader("Origin"));
+            System.out.println("  X-Role hdr  : " + role);
+            java.util.Enumeration<String> headerNames = request.getHeaderNames();
+            System.out.println("  All headers :");
+            if (headerNames != null) {
+                while (headerNames.hasMoreElements()) {
+                    String name = headerNames.nextElement();
+                    System.out.println("    " + name + ": " + request.getHeader(name));
+                }
+            }
+            System.out.println("========================");
+            // ────────────────────────────────────────────────────────────
+
+            if (session == null || !"ADMIN".equals(session.getAttribute("ROLE"))) {
+                System.out.println("[BLOCKED] No valid admin session for: " + path
+                        + " | session=" + (session != null ? session.getId() : "null")
+                        + " | ROLE=" + (session != null ? session.getAttribute("ROLE") : "N/A"));
+                sendForbidden(response, "Access denied. Admin session required.");
                 return false;
             }
+
+            System.out.println("[ALLOWED] Admin session valid → " + path);
             return true;
         }
 
-        // Student team lookup and bookings lookup (require STUDENT role)  
+        // ── Student team lookup — allow always (used during login flow) ─
         if (path.matches("/api/students/.+/team") && "GET".equalsIgnoreCase(method)) {
-            // Allow this during student login (no role yet) or when role is STUDENT
             return true;
         }
+
+        // ── Student bookings lookup ─────────────────────────────────────
         if (path.matches("/api/students/.+/bookings") && "GET".equalsIgnoreCase(method)) {
             if (!"STUDENT".equalsIgnoreCase(role)) {
                 sendForbidden(response, "Access denied. Student login required.");
@@ -64,7 +90,7 @@ public class RoleInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // Booking write operations (POST, PUT, DELETE on /api/bookings/**)
+        // ── Booking write operations (POST/PUT/DELETE on /api/bookings/) ─
         if (path.startsWith("/api/bookings") && !("GET".equalsIgnoreCase(method))) {
             if (!"STUDENT".equalsIgnoreCase(role)) {
                 sendForbidden(response, "Access denied. Student login required.");
